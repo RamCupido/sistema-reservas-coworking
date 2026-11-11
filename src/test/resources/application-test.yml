@@ -1,0 +1,5 @@
+# Perfil de tests. La conexión a la BD la inyecta Testcontainers vía @ServiceConnection.
+logging:
+  level:
+    com.ramses.reservas: DEBUG
+    org.testcontainers: INFO
