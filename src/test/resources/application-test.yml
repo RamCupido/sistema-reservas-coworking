@@ -1,4 +1,8 @@
 # Perfil de tests. La conexión a la BD la inyecta Testcontainers vía @ServiceConnection.
+jwt:
+  # Clave solo para tests; nunca se usa fuera de este perfil.
+  secret: clave-de-tests-no-usar-en-produccion-0123456789
+
 logging:
   level:
     com.ramses.reservas: DEBUG

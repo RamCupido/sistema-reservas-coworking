@@ -19,6 +19,17 @@ spring:
 server:
   port: ${PORT:8080}
 
+# JWT firmado con HS256.
+jwt:
+  secret: ${JWT_SECRET}
+  expiracion: ${JWT_EXPIRACION:1h}
+
+# Administrador inicial: se crea al arrancar solo si ambas variables están definidas.
+admin:
+  email: ${ADMIN_EMAIL:}
+  password: ${ADMIN_PASSWORD:}
+  nombre: ${ADMIN_NOMBRE:Administrador}
+
 management:
   endpoints:
     web:
