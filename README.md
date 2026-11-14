@@ -11,6 +11,7 @@ recordatorios por correo.
 - **Backend:** Java 21, Spring Boot 3.5, Spring Web, Spring Data JPA, Bean Validation, Actuator
 - **Base de datos:** PostgreSQL 17 con migraciones Flyway
 - **Seguridad:** Spring Security + JWT (OAuth2 Resource Server), BCrypt
+- **Documentación:** springdoc-openapi (Swagger UI)
 - **Frontend:** Thymeleaf + Bootstrap *(Fase 4)*
 - **Tests:** JUnit 5, Mockito, MockMvc, Testcontainers
 - **Infra:** Docker, docker-compose, GitHub Actions *(Fase 6)*
@@ -43,6 +44,13 @@ El archivo `.env` lo leen tanto `docker-compose` como el perfil `dev` de Spring
 
 Comprueba que la app está viva en: http://localhost:8080/actuator/health
 
+## Documentación de la API (Swagger)
+
+Con la app en marcha: **http://localhost:8080/swagger-ui.html**
+
+Para probar endpoints protegidos: ejecuta `POST /api/v1/auth/login`, copia el `accessToken`,
+pulsa **Authorize** y pégalo. La especificación OpenAPI en JSON está en `/v3/api-docs`.
+
 ## Autenticación
 
 La API usa **JWT** (HS256) mediante Spring Security OAuth2 Resource Server.
@@ -61,8 +69,6 @@ curl -X POST localhost:8080/api/v1/auth/login \
 curl localhost:8080/api/v1/usuarios/me -H "Authorization: Bearer <token>"
 ```
 
-Los errores siguen el formato [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) (`application/problem+json`).
-
 **Administrador inicial:** si `ADMIN_EMAIL` y `ADMIN_PASSWORD` están definidas, la app crea ese
 usuario con rol `ADMIN` al arrancar (solo si aún no existe). El registro público nunca crea administradores.
 
@@ -74,6 +80,47 @@ usuario con rol `ADMIN` al arrancar (solo si aún no existe). El registro públi
 | `JWT_EXPIRACION` | No | Duración del token (por defecto `1h`) |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | No | Administrador inicial |
 | `DB_URL` / `DB_USER` / `DB_PASSWORD` | Solo en `prod` | Conexión a PostgreSQL |
+
+## Recursos
+
+Espacios reservables: `SALA_REUNIONES`, `ESCRITORIO`, `OFICINA_PRIVADA` y `AUDITORIO`.
+
+| Método | Ruta | Acceso | Descripción |
+|--------|------|--------|-------------|
+| `GET`    | `/api/v1/recursos?tipo=&capacidadMinima=&page=&size=&sort=` | Público | Catálogo paginado (solo activos) |
+| `GET`    | `/api/v1/recursos/{id}` | Público | Detalle de un recurso |
+| `POST`   | `/api/v1/recursos` | ADMIN | Crear (201 + `Location`) |
+| `PUT`    | `/api/v1/recursos/{id}` | ADMIN | Reemplazar |
+| `DELETE` | `/api/v1/recursos/{id}` | ADMIN | Desactivar (borrado lógico) |
+
+Reglas: el horario debe tener la apertura antes del cierre y las horas deben ser en punto o y media
+(los bloques de reserva son de 30 minutos). El nombre es único sin distinguir mayúsculas.
+Un ADMIN puede listar también los desactivados con `incluirInactivos=true`.
+
+## Errores
+
+Todas las respuestas de error siguen el formato [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807)
+(`application/problem+json`):
+
+```json
+{
+  "type": "about:blank",
+  "title": "Datos inválidos",
+  "status": 400,
+  "detail": "La petición contiene campos inválidos",
+  "instance": "/api/v1/recursos",
+  "errores": { "capacidad": "La capacidad debe ser mayor que 0" }
+}
+```
+
+| Código | Cuándo |
+|--------|--------|
+| 400 | Validación, regla de negocio incumplida, JSON o parámetro inválido |
+| 401 | Sin token, token inválido/expirado o credenciales incorrectas |
+| 403 | Autenticado pero sin el rol necesario |
+| 404 | Recurso o usuario inexistente |
+| 409 | Duplicado o modificación concurrente |
+| 500 | Error inesperado (sin detalles internos; queda en el log) |
 
 ## Tests
 
@@ -98,7 +145,7 @@ Los secretos nunca se guardan en el repositorio: se leen desde variables de ento
 
 - [x] **Fase 0** — Esqueleto: Maven, docker-compose, perfiles, Flyway, healthcheck
 - [x] **Fase 1** — Usuarios y autenticación JWT con roles
-- [ ] **Fase 2** — CRUD de recursos, manejo global de errores, Swagger
+- [x] **Fase 2** — CRUD de recursos, manejo global de errores, Swagger
 - [ ] **Fase 3** — Reservas: solapamiento, concurrencia, cancelación y disponibilidad
 - [ ] **Fase 4** — Frontend Thymeleaf
 - [ ] **Fase 5** — Notificaciones por correo y recordatorios programados
