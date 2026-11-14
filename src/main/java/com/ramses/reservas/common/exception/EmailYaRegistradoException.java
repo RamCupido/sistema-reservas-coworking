@@ -1,8 +1,8 @@
 package com.ramses.reservas.common.exception;
 
-public class EmailYaRegistradoException extends RuntimeException {
+public class EmailYaRegistradoException extends ConflictoException {
 
     public EmailYaRegistradoException(String email) {
-        super("El email " + email + " ya está registrado");
+        super("Email ya registrado", "El email " + email + " ya está registrado");
     }
 }
