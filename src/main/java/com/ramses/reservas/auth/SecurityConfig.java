@@ -33,6 +33,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/registro", "/api/v1/auth/login").permitAll()
+                        // Catálogo público; la escritura se protege con @PreAuthorize en el controller.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/recursos", "/api/v1/recursos/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/actuator/health/**", "/error").permitAll()
                         .anyRequest().authenticated())
                 // Resource Server: Spring lee "Authorization: Bearer ...", valida el JWT

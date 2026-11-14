@@ -8,13 +8,22 @@ spring:
       ddl-auto: validate
     # Evita mantener la sesión de BD abierta durante la vista (oculta N+1 y lazy loading).
     open-in-view: false
-    properties:
-      hibernate:
-        jdbc:
-          time_zone: UTC
+    # Sin hibernate.jdbc.time_zone: esa propiedad también desplaza los LocalTime (TIME)
+    # según la zona del servidor. Los Instant ya se guardan en UTC en columnas TIMESTAMPTZ.
   flyway:
     enabled: true
     locations: classpath:db/migration
+  data:
+    web:
+      pageable:
+        # Evita que un cliente pida ?size=100000 y tumbe la BD.
+        max-page-size: 100
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: method
 
 server:
   port: ${PORT:8080}
