@@ -1,5 +1,7 @@
 package com.ramses.reservas.recurso;
 
+import static com.ramses.reservas.common.util.SeguridadUtils.esAdmin;
+
 import com.ramses.reservas.common.dto.PaginaResponse;
 import com.ramses.reservas.recurso.dto.RecursoRequest;
 import com.ramses.reservas.recurso.dto.RecursoResponse;
@@ -85,11 +87,5 @@ public class RecursoController {
     @Operation(summary = "Desactivar un recurso (borrado lógico, ADMIN)")
     public void eliminar(@PathVariable Long id) {
         recursoService.desactivar(id);
-    }
-
-    /** En rutas públicas el usuario puede ser anónimo: entonces authentication es null. */
-    private static boolean esAdmin(Authentication authentication) {
-        return authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 }
