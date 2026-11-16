@@ -97,6 +97,56 @@ Reglas: el horario debe tener la apertura antes del cierre y las horas deben ser
 (los bloques de reserva son de 30 minutos). El nombre es único sin distinguir mayúsculas.
 Un ADMIN puede listar también los desactivados con `incluirInactivos=true`.
 
+## Reservas
+
+| Método | Ruta | Acceso | Descripción |
+|--------|------|--------|-------------|
+| `GET`   | `/api/v1/recursos/{id}/disponibilidad?fecha=YYYY-MM-DD` | Público | Bloques de 30 min libres/ocupados |
+| `POST`  | `/api/v1/reservas` | Autenticado | Crear (`{recursoId, fechaInicio, fechaFin}`) |
+| `GET`   | `/api/v1/reservas/mias?estado=&page=` | Autenticado | Mis reservas |
+| `GET`   | `/api/v1/reservas/{id}` | Dueño o ADMIN | Detalle |
+| `PATCH` | `/api/v1/reservas/{id}/cancelar` | Dueño o ADMIN | Cancelar |
+| `GET`   | `/api/v1/admin/reservas?estado=&desde=&hasta=&page=` | ADMIN | Todas, con filtros |
+
+```bash
+curl -X POST localhost:8080/api/v1/reservas -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"recursoId": 1, "fechaInicio": "2026-11-20T10:00", "fechaFin": "2026-11-20T11:30"}'
+```
+
+Las fechas se envían y devuelven en **hora local del coworking** (`America/Guayaquil`,
+configurable con `RESERVAS_ZONA_HORARIA`); en la base se guardan como instantes UTC (`TIMESTAMPTZ`).
+
+### Reglas de negocio
+
+- **Sin solapamientos** en un mismo recurso (las canceladas no cuentan). Reservas contiguas
+  (10:00–11:00 y 11:00–12:00) están permitidas.
+- **Dentro del horario de atención**, el mismo día, en **bloques de 30 minutos** y **nunca en el pasado**.
+- **Cancelación:** el cliente solo cancela las suyas y hasta **2 horas antes**; el ADMIN, cualquiera.
+  Una reserva ajena responde 404 (no se revela que existe).
+- **Precio** = horas × `precioPorHora`, calculado en el backend y congelado al reservar.
+- No hay pagos: las reservas nacen `CONFIRMADA`.
+
+### Concurrencia: cómo se evitan las reservas dobles
+
+Si dos personas piden el mismo horario en el mismo instante, ambas peticiones podrían pasar la
+verificación "¿está libre?" antes de que ninguna haya guardado. Se protege en dos capas:
+
+1. **Verificación previa en el service** → error claro (409) en el caso normal.
+2. **Constraint de exclusión en PostgreSQL** → garantía atómica, venga de donde venga el `INSERT`:
+
+```sql
+CONSTRAINT ex_reservas_solapamiento EXCLUDE USING gist (
+    recurso_id WITH =,
+    tstzrange(fecha_inicio, fecha_fin, '[)') WITH &&
+) WHERE (estado <> 'CANCELADA')
+```
+
+Se eligió frente al bloqueo pesimista (`SELECT ... FOR UPDATE`) porque, cuando el horario está libre,
+no hay filas que bloquear (*phantom*), y porque la garantía vive en la base de datos y no depende
+de que todo el código recuerde tomar el bloqueo. Un test lanza 10 peticiones simultáneas y verifica
+que exactamente una gana.
+
 ## Errores
 
 Todas las respuestas de error siguen el formato [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807)
@@ -146,7 +196,7 @@ Los secretos nunca se guardan en el repositorio: se leen desde variables de ento
 - [x] **Fase 0** — Esqueleto: Maven, docker-compose, perfiles, Flyway, healthcheck
 - [x] **Fase 1** — Usuarios y autenticación JWT con roles
 - [x] **Fase 2** — CRUD de recursos, manejo global de errores, Swagger
-- [ ] **Fase 3** — Reservas: solapamiento, concurrencia, cancelación y disponibilidad
+- [x] **Fase 3** — Reservas: solapamiento, concurrencia, cancelación y disponibilidad
 - [ ] **Fase 4** — Frontend Thymeleaf
 - [ ] **Fase 5** — Notificaciones por correo y recordatorios programados
 - [ ] **Fase 6** — Dockerfile, CI con GitHub Actions y despliegue
