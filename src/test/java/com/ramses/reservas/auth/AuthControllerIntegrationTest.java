@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ramses.reservas.IntegracionTest;
+import com.ramses.reservas.LimpiadorBaseDatos;
 import com.ramses.reservas.usuario.Rol;
 import com.ramses.reservas.usuario.Usuario;
 import com.ramses.reservas.usuario.UsuarioRepository;
@@ -37,6 +38,8 @@ class AuthControllerIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
     @Autowired
+    private LimpiadorBaseDatos limpiadorBaseDatos;
+    @Autowired
     private ObjectMapper objectMapper;
     @Autowired
     private UsuarioRepository usuarioRepository;
@@ -45,7 +48,7 @@ class AuthControllerIntegrationTest {
 
     @BeforeEach
     void limpiarBaseDeDatos() {
-        usuarioRepository.deleteAll();
+        limpiadorBaseDatos.limpiar();
     }
 
     @Nested

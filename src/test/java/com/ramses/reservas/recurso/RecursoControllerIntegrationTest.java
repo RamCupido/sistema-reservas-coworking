@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ramses.reservas.IntegracionTest;
+import com.ramses.reservas.LimpiadorBaseDatos;
 import java.math.BigDecimal;
 import java.time.LocalTime;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,11 +38,13 @@ class RecursoControllerIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
     @Autowired
+    private LimpiadorBaseDatos limpiadorBaseDatos;
+    @Autowired
     private RecursoRepository recursoRepository;
 
     @BeforeEach
     void limpiar() {
-        recursoRepository.deleteAll();
+        limpiadorBaseDatos.limpiar();
     }
 
     private static JwtRequestPostProcessor admin() {
