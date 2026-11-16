@@ -33,6 +33,12 @@ jwt:
   secret: ${JWT_SECRET}
   expiracion: ${JWT_EXPIRACION:1h}
 
+# Reglas de reservas
+reservas:
+  # Las fechas de la API se interpretan en la zona del coworking.
+  zona-horaria: ${RESERVAS_ZONA_HORARIA:America/Guayaquil}
+  anticipacion-minima-cancelacion: 2h
+
 # Administrador inicial: se crea al arrancar solo si ambas variables están definidas.
 admin:
   email: ${ADMIN_EMAIL:}
