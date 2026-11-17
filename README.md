@@ -12,7 +12,7 @@ recordatorios por correo.
 - **Base de datos:** PostgreSQL 17 con migraciones Flyway
 - **Seguridad:** Spring Security + JWT (OAuth2 Resource Server), BCrypt
 - **Documentación:** springdoc-openapi (Swagger UI)
-- **Frontend:** Thymeleaf + Bootstrap *(Fase 4)*
+- **Frontend:** Thymeleaf + Bootstrap 5 (con Spring Security en las plantillas)
 - **Tests:** JUnit 5, Mockito, MockMvc, Testcontainers
 - **Infra:** Docker, docker-compose, GitHub Actions *(Fase 6)*
 
@@ -42,7 +42,8 @@ El archivo `.env` lo leen tanto `docker-compose` como el perfil `dev` de Spring
 (`spring.config.import`). Si ya tienes otro PostgreSQL en el puerto 5432, cambia
 `POSTGRES_PORT` en `.env` y listo.
 
-Comprueba que la app está viva en: http://localhost:8080/actuator/health
+Abre **http://localhost:8080** para usar la web. Comprueba que la app está viva en:
+http://localhost:8080/actuator/health
 
 ## Documentación de la API (Swagger)
 
@@ -147,9 +148,38 @@ no hay filas que bloquear (*phantom*), y porque la garantía vive en la base de 
 de que todo el código recuerde tomar el bloqueo. Un test lanza 10 peticiones simultáneas y verifica
 que exactamente una gana.
 
+## Frontend web (Thymeleaf)
+
+| Ruta | Acceso | Qué hace |
+|------|--------|----------|
+| `/` | Público | Catálogo de espacios con filtro por tipo |
+| `/recursos/{id}?fecha=` | Público (reservar requiere sesión) | Agenda del día en bloques de 30 min y formulario de reserva |
+| `/login`, `/registro` | Público | Entrar y crear cuenta |
+| `/mis-reservas` | Autenticado | Mis reservas, con filtro por estado y botón de cancelar |
+| `/admin/recursos` | ADMIN | Crear, editar, desactivar y reactivar recursos |
+| `/admin/reservas` | ADMIN | Todas las reservas con filtros; cancelar cualquiera |
+
+### Dos cadenas de seguridad: sesión para la web, JWT para la API
+
+```
+/api/**, Swagger, Actuator  →  Cadena 1: sin estado, JWT en "Authorization", CSRF desactivado
+todo lo demás               →  Cadena 2: login por formulario, cookie de sesión, CSRF activado
+```
+
+- La cookie de sesión es `HttpOnly` (JavaScript no puede leerla) y `SameSite=Lax`; en `prod`, además, `Secure`.
+- La API puede prescindir de CSRF porque **la cookie de la web no autentica en la API** (hay un test que
+  lo comprueba): una web maliciosa no tiene forma de enviar el JWT en nombre del usuario.
+- Los controllers web llaman a los **mismos services** que la API (sin HTTP de por medio), así que las reglas
+  de negocio están en un solo sitio. Los formularios se validan con las anotaciones de los DTOs de la API.
+- Tras cada `POST` se redirige (patrón PRG) y el resultado se muestra con *flash attributes*.
+- Bootstrap se carga desde CDN con versión fija y hash de integridad (SRI).
+
+Al desactivar un recurso, sus reservas futuras **se mantienen** y el panel avisa de cuántas son,
+para que el admin decida si cancelarlas.
+
 ## Errores
 
-Todas las respuestas de error siguen el formato [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807)
+En la API, todas las respuestas de error siguen el formato [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807)
 (`application/problem+json`):
 
 ```json
@@ -171,6 +201,9 @@ Todas las respuestas de error siguen el formato [RFC 7807](https://www.rfc-edito
 | 404 | Recurso o usuario inexistente |
 | 409 | Duplicado o modificación concurrente |
 | 500 | Error inesperado (sin detalles internos; queda en el log) |
+
+En la web, los errores se muestran como páginas HTML (`templates/error/`) y los de negocio esperables
+(horario ocupado, fuera de plazo...) como alertas en la propia página.
 
 ## Tests
 
@@ -197,6 +230,6 @@ Los secretos nunca se guardan en el repositorio: se leen desde variables de ento
 - [x] **Fase 1** — Usuarios y autenticación JWT con roles
 - [x] **Fase 2** — CRUD de recursos, manejo global de errores, Swagger
 - [x] **Fase 3** — Reservas: solapamiento, concurrencia, cancelación y disponibilidad
-- [ ] **Fase 4** — Frontend Thymeleaf
+- [x] **Fase 4** — Frontend Thymeleaf: catálogo, agenda, mis reservas y panel de admin
 - [ ] **Fase 5** — Notificaciones por correo y recordatorios programados
 - [ ] **Fase 6** — Dockerfile, CI con GitHub Actions y despliegue
