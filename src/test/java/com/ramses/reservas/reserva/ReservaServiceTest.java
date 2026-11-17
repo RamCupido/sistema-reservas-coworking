@@ -325,6 +325,39 @@ class ReservaServiceTest {
         }
     }
 
+    /** La misma regla que cancelar(), usada por las páginas para mostrar u ocultar el botón. */
+    @Nested
+    class EsCancelable {
+
+        private ReservaResponse reservaQueEmpiezaEn(Duration dentroDe, EstadoReserva estado) {
+            LocalDateTime inicio = AHORA.plus(dentroDe);
+            return new ReservaResponse(7L, null, null, inicio, inicio.plusHours(1), estado,
+                    new BigDecimal("25.00"), Instant.now());
+        }
+
+        @ParameterizedTest(name = "faltan {0} min, admin={1} → {2}")
+        @CsvSource({
+                "1440, false, true",   // mañana: el cliente puede
+                "120,  false, true",   // justo 2 h antes: el cliente puede
+                "119,  false, false",  // menos de 2 h: el cliente ya no
+                "30,   true,  true",   // el admin no tiene plazo
+                "0,    true,  false",  // ya empezó: nadie
+                "-60,  true,  false"   // ya pasó: nadie
+        })
+        void respetaElPlazoYElRol(long minutos, boolean esAdmin, boolean esperado) {
+            ReservaResponse reserva = reservaQueEmpiezaEn(Duration.ofMinutes(minutos), EstadoReserva.CONFIRMADA);
+
+            assertThat(service.esCancelable(reserva, esAdmin)).isEqualTo(esperado);
+        }
+
+        @Test
+        void unaReservaCanceladaNoEsCancelable() {
+            ReservaResponse reserva = reservaQueEmpiezaEn(Duration.ofDays(1), EstadoReserva.CANCELADA);
+
+            assertThat(service.esCancelable(reserva, true)).isFalse();
+        }
+    }
+
     @Nested
     class Consultar {
 
