@@ -97,23 +97,29 @@ public class ReservaService {
     @Transactional
     public ReservaResponse cancelar(Long id, String emailUsuario, boolean esAdmin) {
         Reserva reserva = buscarVisible(id, emailUsuario, esAdmin);
-        Instant ahora = Instant.now(clock);
-
-        if (reserva.getEstado() == EstadoReserva.CANCELADA) {
-            throw new ReservaNoCancelableException("La reserva ya está cancelada");
-        }
-        if (reserva.getEstado() == EstadoReserva.COMPLETADA || !reserva.getFechaInicio().isAfter(ahora)) {
-            throw new ReservaNoCancelableException("La reserva ya comenzó o finalizó");
-        }
-        Duration anticipacion = reservasProperties.anticipacionMinimaCancelacion();
-        if (!esAdmin && Duration.between(ahora, reserva.getFechaInicio()).compareTo(anticipacion) < 0) {
-            throw new CancelacionFueraDePlazoException(anticipacion);
+        RuntimeException motivo = motivoNoCancelable(reserva.getEstado(), reserva.getFechaInicio(), esAdmin);
+        if (motivo != null) {
+            throw motivo;
         }
 
         // Sin save(): la entidad está gestionada; al confirmar, Hibernate hace el UPDATE
         // con "WHERE version = ?" (bloqueo optimista).
         reserva.cancelar();
         return reservaMapper.toResponse(reserva);
+    }
+
+    /**
+     * Misma regla que {@link #cancelar}, pero como pregunta: la usa el frontend para
+     * mostrar u ocultar el botón "Cancelar" sin duplicar la lógica.
+     */
+    public boolean esCancelable(ReservaResponse reserva, boolean esAdmin) {
+        return motivoNoCancelable(reserva.estado(), aInstante(reserva.fechaInicio()), esAdmin) == null;
+    }
+
+    /** Reservas no canceladas que aún no empiezan (para avisar al admin al desactivar un recurso). */
+    @Transactional(readOnly = true)
+    public long contarFuturas(Long recursoId) {
+        return reservaRepository.contarFuturasNoCanceladas(recursoId, Instant.now(clock));
     }
 
     @Transactional(readOnly = true)
@@ -168,6 +174,25 @@ public class ReservaService {
             throw new ReservaInvalidaException("El horario de atención de '" + recurso.getNombre() + "' es de "
                     + recurso.getHoraApertura() + " a " + recurso.getHoraCierre());
         }
+    }
+
+    /**
+     * Regla 4. Devuelve la excepción que explica por qué no se puede cancelar, o null si se puede.
+     * Devolverla (en vez de lanzarla) permite reutilizar la regla también como booleano.
+     */
+    private RuntimeException motivoNoCancelable(EstadoReserva estado, Instant inicio, boolean esAdmin) {
+        Instant ahora = Instant.now(clock);
+        if (estado == EstadoReserva.CANCELADA) {
+            return new ReservaNoCancelableException("La reserva ya está cancelada");
+        }
+        if (estado == EstadoReserva.COMPLETADA || !inicio.isAfter(ahora)) {
+            return new ReservaNoCancelableException("La reserva ya comenzó o finalizó");
+        }
+        Duration anticipacion = reservasProperties.anticipacionMinimaCancelacion();
+        if (!esAdmin && Duration.between(ahora, inicio).compareTo(anticipacion) < 0) {
+            return new CancelacionFueraDePlazoException(anticipacion);
+        }
+        return null;
     }
 
     /** Regla 5: precioTotal = horas × precioPorHora (en minutos para no perder la media hora). */

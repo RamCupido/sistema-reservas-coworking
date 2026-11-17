@@ -43,6 +43,14 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long>, JpaSpec
                                          @Param("inicio") Instant inicio,
                                          @Param("fin") Instant fin);
 
+    @Query("""
+            SELECT COUNT(r) FROM Reserva r
+            WHERE r.recurso.id = :recursoId
+              AND r.estado <> com.ramses.reservas.reserva.EstadoReserva.CANCELADA
+              AND r.fechaInicio > :ahora
+            """)
+    long contarFuturasNoCanceladas(@Param("recursoId") Long recursoId, @Param("ahora") Instant ahora);
+
     @EntityGraph(attributePaths = {"recurso", "usuario"})
     Optional<Reserva> findConDetalleById(Long id);
 
