@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Mis reservas')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<main class="container">
+    <div th:replace="~{fragments/layout :: alertas}"></div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+        <h1 class="h3 mb-0">Mis reservas</h1>
+        <div class="d-flex flex-wrap gap-2" role="group" aria-label="Filtrar por estado">
+            <a class="btn btn-sm" th:href="@{/mis-reservas}"
+               th:classappend="${estadoSeleccionado == null} ? 'btn-primary' : 'btn-outline-primary'">Todas</a>
+            <a th:each="e : ${estados}" class="btn btn-sm" th:href="@{/mis-reservas(estado=${e})}"
+               th:classappend="${estadoSeleccionado == e} ? 'btn-primary' : 'btn-outline-primary'"
+               th:text="${#messages.msg('estado.' + e)}">Estado</a>
+        </div>
+    </div>
+
+    <div th:if="${pagina.content.isEmpty()}" class="card card-body text-center text-body-secondary py-5">
+        <p class="mb-3">Todavía no tienes reservas aquí.</p>
+        <div><a class="btn btn-primary" th:href="@{/}">Buscar un espacio</a></div>
+    </div>
+
+    <div class="card shadow-sm" th:unless="${pagina.content.isEmpty()}">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                <tr>
+                    <th>Espacio</th>
+                    <th>Fecha</th>
+                    <th>Horario</th>
+                    <th>Estado</th>
+                    <th class="text-end">Total</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${pagina.content}">
+                    <td><a th:href="@{/recursos/{id}(id=${r.recurso.id})}" th:text="${r.recurso.nombre}">Sala</a></td>
+                    <td th:text="${#temporals.format(r.fechaInicio, 'dd/MM/yyyy')}">20/11/2026</td>
+                    <td th:text="${#temporals.format(r.fechaInicio, 'HH:mm')} + ' – ' + ${#temporals.format(r.fechaFin, 'HH:mm')}">10:00 – 11:00</td>
+                    <td><span th:replace="~{fragments/estado :: badge(${r.estado})}"></span></td>
+                    <td class="text-end">$<span th:text="${#numbers.formatDecimal(r.precioTotal, 1, 2, 'POINT')}">25.00</span></td>
+                    <td class="text-end">
+                        <form th:if="${cancelables.contains(r.id)}" method="post" class="m-0"
+                              th:action="@{/mis-reservas/{id}/cancelar(id=${r.id})}"
+                              onsubmit="return confirm('¿Cancelar esta reserva?')">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Cancelar</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <p class="form-text">Las reservas se pueden cancelar hasta 2 horas antes del inicio.</p>
+
+    <nav th:replace="~{fragments/layout :: paginacion(${pagina}, ${urlPagina})}"></nav>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

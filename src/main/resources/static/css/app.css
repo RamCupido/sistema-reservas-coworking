@@ -1,0 +1,63 @@
+/* Estilos propios: Bootstrap cubre casi todo; aquí solo la agenda y algunos ajustes. */
+
+body {
+    background-color: var(--bs-tertiary-bg);
+    min-height: 100vh;
+}
+
+.form-estrecho {
+    max-width: 440px;
+}
+
+/* --- Agenda de bloques de 30 minutos --- */
+.agenda {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+    gap: .5rem;
+}
+
+.bloque {
+    border: 1px solid var(--bs-border-color);
+    border-radius: .5rem;
+    padding: .55rem 0;
+    font-variant-numeric: tabular-nums;
+    font-size: .9rem;
+    transition: background-color .1s, border-color .1s;
+}
+
+.bloque.libre {
+    background-color: var(--bs-success-bg-subtle);
+    border-color: var(--bs-success-border-subtle);
+    color: var(--bs-success-text-emphasis);
+    cursor: pointer;
+}
+
+.bloque.libre:hover {
+    border-color: var(--bs-success);
+}
+
+.bloque.ocupado {
+    background-color: var(--bs-secondary-bg);
+    color: var(--bs-secondary-color);
+    text-decoration: line-through;
+    cursor: not-allowed;
+}
+
+.bloque.seleccionado {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: #fff;
+}
+
+.leyenda {
+    display: inline-block;
+    width: .9rem;
+    height: .9rem;
+    border-radius: .2rem;
+    vertical-align: -.1rem;
+    border: 1px solid var(--bs-border-color);
+}
+
+.leyenda.libre { background-color: var(--bs-success-bg-subtle); }
+.leyenda.ocupado { background-color: var(--bs-secondary-bg); }
+.leyenda.seleccionado { background-color: var(--bs-primary); }

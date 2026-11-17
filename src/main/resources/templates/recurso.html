@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head(${recurso.nombre})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<main class="container" th:with="fecha=${disponibilidad.fecha}">
+    <div th:replace="~{fragments/layout :: alertas}"></div>
+
+    <a th:href="@{/}" class="small text-decoration-none">&larr; Todos los espacios</a>
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mt-2 mb-4">
+        <div>
+            <span class="badge text-bg-light border mb-2" th:text="${#messages.msg('tipo.' + recurso.tipo)}">Sala</span>
+            <h1 class="h3 mb-1" th:text="${recurso.nombre}">Sala Andes</h1>
+            <p class="text-body-secondary mb-0" th:text="${recurso.descripcion}">Descripción</p>
+        </div>
+        <ul class="list-unstyled small text-md-end mb-0">
+            <li>Capacidad: <strong th:text="${recurso.capacidad} + ' personas'">8</strong></li>
+            <li>Horario: <strong th:text="${#temporals.format(recurso.horaApertura, 'HH:mm')} + ' – '
+                    + ${#temporals.format(recurso.horaCierre, 'HH:mm')}">08:00 – 20:00</strong></li>
+            <li>Precio: <strong>$<span th:text="${#numbers.formatDecimal(recurso.precioPorHora, 1, 2, 'POINT')}">25.00</span>/hora</strong></li>
+        </ul>
+    </div>
+
+    <div class="row g-4">
+        <!--/* Agenda del día */-->
+        <section class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <a class="btn btn-outline-secondary btn-sm"
+                       th:classappend="${!fecha.isAfter(hoy)} ? 'disabled'"
+                       th:href="@{/recursos/{id}(id=${recurso.id}, fecha=${fecha.minusDays(1)})}">&larr; Anterior</a>
+                    <form method="get" class="d-flex gap-2 align-items-center"
+                          th:action="@{/recursos/{id}(id=${recurso.id})}">
+                        <label for="fecha" class="visually-hidden">Fecha</label>
+                        <input type="date" id="fecha" name="fecha" class="form-control form-control-sm"
+                               th:value="${fecha}" th:min="${hoy}" onchange="this.form.submit()">
+                    </form>
+                    <a class="btn btn-outline-secondary btn-sm"
+                       th:href="@{/recursos/{id}(id=${recurso.id}, fecha=${fecha.plusDays(1)})}">Siguiente &rarr;</a>
+                </div>
+                <div class="card-body">
+                    <p class="fw-semibold text-capitalize mb-3"
+                       th:text="${#temporals.format(fecha, 'EEEE d ''de'' MMMM')}">lunes 16 de noviembre</p>
+                    <div class="agenda" id="agenda">
+                        <!--/* data-*: el JS lee los bloques para validar rangos contiguos en el navegador. */-->
+                        <button type="button" th:each="b : ${disponibilidad.bloques}"
+                                class="bloque" th:classappend="${b.disponible} ? 'libre' : 'ocupado'"
+                                th:disabled="${!b.disponible}"
+                                th:attr="data-inicio=${#temporals.format(b.inicio, 'HH:mm')},
+                                         data-fin=${#temporals.format(b.fin, 'HH:mm')},
+                                         data-libre=${b.disponible}"
+                                th:title="${b.disponible} ? 'Libre' : 'No disponible'">
+                            <span th:text="${#temporals.format(b.inicio, 'HH:mm')}">10:00</span>
+                        </button>
+                    </div>
+                    <div class="d-flex gap-3 small text-body-secondary mt-3">
+                        <span><span class="leyenda libre"></span> Libre</span>
+                        <span><span class="leyenda ocupado"></span> Ocupado o pasado</span>
+                        <span><span class="leyenda seleccionado"></span> Tu selección</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!--/* Formulario de reserva */-->
+        <aside class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Reservar</h2>
+
+                    <div sec:authorize="!isAuthenticated()">
+                        <p class="text-body-secondary small">Necesitas una cuenta para reservar.</p>
+                        <a class="btn btn-primary w-100" th:href="@{/login}">Entrar</a>
+                    </div>
+
+                    <form sec:authorize="isAuthenticated()" id="form-reserva" method="post"
+                          th:action="@{/reservas}" th:object="${reserva}"
+                          th:attr="data-precio-hora=${recurso.precioPorHora}">
+                        <input type="hidden" th:field="*{recursoId}">
+                        <input type="hidden" th:field="*{fecha}">
+
+                        <p class="small text-body-secondary">
+                            Pulsa un bloque libre para el inicio y otro para el final, o usa los selectores.
+                        </p>
+                        <div class="row g-2 mb-3">
+                            <div class="col">
+                                <label for="horaInicio" class="form-label small">Desde</label>
+                                <select id="horaInicio" name="horaInicio" class="form-select" required>
+                                    <option value="">--:--</option>
+                                    <option th:each="b : ${disponibilidad.bloques}" th:if="${b.disponible}"
+                                            th:value="${#temporals.format(b.inicio, 'HH:mm')}"
+                                            th:text="${#temporals.format(b.inicio, 'HH:mm')}">10:00</option>
+                                </select>
+                            </div>
+                            <div class="col">
+                                <label for="horaFin" class="form-label small">Hasta</label>
+                                <select id="horaFin" name="horaFin" class="form-select" required>
+                                    <option value="">--:--</option>
+                                    <option th:each="b : ${disponibilidad.bloques}"
+                                            th:value="${#temporals.format(b.fin, 'HH:mm')}"
+                                            th:text="${#temporals.format(b.fin, 'HH:mm')}">10:30</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p class="d-flex justify-content-between mb-3">
+                            <span>Total estimado</span>
+                            <strong id="total-estimado">—</strong>
+                        </p>
+                        <button type="submit" class="btn btn-primary w-100">Confirmar reserva</button>
+                        <p class="form-text mt-2 mb-0">
+                            El precio final lo calcula el servidor. Puedes cancelar hasta 2 horas antes.
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </aside>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+<script th:src="@{/js/reserva.js}"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Acceso denegado')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container text-center py-5">
+    <p class="display-4 fw-semibold text-body-secondary">403</p>
+    <h1 class="h3">No tienes permiso para ver esta página</h1>
+    <p class="text-body-secondary">Si crees que es un error, entra con otra cuenta.</p>
+    <a class="btn btn-primary mt-3" th:href="@{/}">Volver al inicio</a>
+</main>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

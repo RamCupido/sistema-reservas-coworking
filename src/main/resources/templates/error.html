@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<!--/*
+  Página de error genérica. La usan:
+  - Spring Boot (BasicErrorController) para cualquier código sin plantilla propia: modelo con status y error.
+  - WebExceptionHandler: modelo con status, titulo y mensaje.
+*/-->
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Error')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container text-center py-5">
+    <p class="display-4 fw-semibold text-body-secondary" th:text="${status}">500</p>
+    <h1 class="h3" th:text="${titulo} ?: 'Algo salió mal'">Algo salió mal</h1>
+    <p class="text-body-secondary" th:text="${mensaje} ?: 'No pudimos completar la operación.'">Detalle</p>
+    <a class="btn btn-primary mt-3" th:href="@{/}">Volver al inicio</a>
+</main>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${recursoId == null} ? 'Nuevo recurso' : 'Editar recurso')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<main class="container" style="max-width: 720px">
+    <a th:href="@{/admin/recursos}" class="small text-decoration-none">&larr; Recursos</a>
+    <h1 class="h3 mt-2 mb-4" th:text="${recursoId == null} ? 'Nuevo recurso' : 'Editar recurso'">Nuevo recurso</h1>
+
+    <form th:action="@{${accion}}" th:object="${recurso}" method="post" class="card card-body shadow-sm" novalidate>
+        <div class="row g-3">
+            <div class="col-md-8">
+                <label for="nombre" class="form-label">Nombre</label>
+                <input type="text" th:field="*{nombre}" class="form-control" th:errorclass="is-invalid">
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('nombre')}"
+                     th:text="${#fields.errors('nombre')[0]}">Error</div>
+            </div>
+            <div class="col-md-4">
+                <label for="tipo" class="form-label">Tipo</label>
+                <select th:field="*{tipo}" class="form-select" th:errorclass="is-invalid">
+                    <option value="">Elige…</option>
+                    <option th:each="t : ${tipos}" th:value="${t}" th:text="${#messages.msg('tipo.' + t)}">Sala</option>
+                </select>
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('tipo')}"
+                     th:text="${#fields.errors('tipo')[0]}">Error</div>
+            </div>
+            <div class="col-12">
+                <label for="descripcion" class="form-label">Descripción <span class="text-body-secondary">(opcional)</span></label>
+                <textarea th:field="*{descripcion}" rows="3" class="form-control" th:errorclass="is-invalid"></textarea>
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('descripcion')}"
+                     th:text="${#fields.errors('descripcion')[0]}">Error</div>
+            </div>
+            <div class="col-md-6">
+                <label for="capacidad" class="form-label">Capacidad (personas)</label>
+                <input type="number" min="1" th:field="*{capacidad}" class="form-control" th:errorclass="is-invalid">
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('capacidad')}"
+                     th:text="${#fields.errors('capacidad')[0]}">Error</div>
+            </div>
+            <div class="col-md-6">
+                <label for="precioPorHora" class="form-label">Precio por hora ($)</label>
+                <input type="number" min="0" step="0.01" th:field="*{precioPorHora}" class="form-control"
+                       th:errorclass="is-invalid">
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('precioPorHora')}"
+                     th:text="${#fields.errors('precioPorHora')[0]}">Error</div>
+            </div>
+            <div class="col-md-6">
+                <label for="horaApertura" class="form-label">Apertura</label>
+                <!--/* step=1800 s: el selector de hora avanza de media en media hora. */-->
+                <input type="time" step="1800" th:field="*{horaApertura}" class="form-control"
+                       th:errorclass="is-invalid">
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('horaApertura')}"
+                     th:text="${#fields.errors('horaApertura')[0]}">Error</div>
+            </div>
+            <div class="col-md-6">
+                <label for="horaCierre" class="form-label">Cierre</label>
+                <input type="time" step="1800" th:field="*{horaCierre}" class="form-control"
+                       th:errorclass="is-invalid">
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('horaCierre')}"
+                     th:text="${#fields.errors('horaCierre')[0]}">Error</div>
+            </div>
+            <div class="col-12">
+                <div class="form-check">
+                    <input type="checkbox" th:field="*{activo}" class="form-check-input">
+                    <label class="form-check-label" th:for="${#ids.prev('activo')}">Activo (visible en el catálogo)</label>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a class="btn btn-outline-secondary" th:href="@{/admin/recursos}">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+    </form>
+</main>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

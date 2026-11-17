@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Espacios')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<main class="container">
+    <div th:replace="~{fragments/layout :: alertas}"></div>
+    <div th:if="${param.logout}" class="alert alert-info">Has cerrado sesión.</div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Espacios disponibles</h1>
+            <p class="text-body-secondary mb-0">Elige un espacio y consulta su agenda en bloques de 30 minutos.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo">
+            <a class="btn btn-sm" th:href="@{/}"
+               th:classappend="${tipoSeleccionado == null} ? 'btn-primary' : 'btn-outline-primary'">Todos</a>
+            <a th:each="t : ${tipos}" class="btn btn-sm" th:href="@{/(tipo=${t})}"
+               th:classappend="${tipoSeleccionado == t} ? 'btn-primary' : 'btn-outline-primary'"
+               th:text="${#messages.msg('tipo.' + t)}">Tipo</a>
+        </div>
+    </div>
+
+    <div th:if="${pagina.content.isEmpty()}" class="text-center text-body-secondary py-5">
+        No hay espacios de este tipo por ahora.
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        <div class="col" th:each="r : ${pagina.content}">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body d-flex flex-column">
+                    <span class="badge text-bg-light border align-self-start mb-2"
+                          th:text="${#messages.msg('tipo.' + r.tipo)}">Sala</span>
+                    <h2 class="h5 card-title" th:text="${r.nombre}">Sala Andes</h2>
+                    <p class="card-text text-body-secondary small flex-grow-1"
+                       th:text="${r.descripcion} ?: 'Sin descripción'">Descripción</p>
+                    <ul class="list-unstyled small mb-3">
+                        <li>Capacidad: <strong th:text="${r.capacidad} + ' personas'">8</strong></li>
+                        <li>Horario: <strong th:text="${#temporals.format(r.horaApertura, 'HH:mm')} + ' – '
+                                + ${#temporals.format(r.horaCierre, 'HH:mm')}">08:00 – 20:00</strong></li>
+                    </ul>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fs-5 fw-semibold">
+                            $<span th:text="${#numbers.formatDecimal(r.precioPorHora, 1, 2, 'POINT')}">25.00</span>
+                            <small class="text-body-secondary fw-normal">/hora</small>
+                        </span>
+                        <a class="btn btn-primary btn-sm" th:href="@{/recursos/{id}(id=${r.id})}">Ver agenda</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <nav th:replace="~{fragments/layout :: paginacion(${pagina}, ${urlPagina})}"></nav>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('No encontrado')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container text-center py-5">
+    <p class="display-4 fw-semibold text-body-secondary">404</p>
+    <h1 class="h3">No encontramos lo que buscas</h1>
+    <p class="text-body-secondary" th:text="${mensaje} ?: 'La página no existe o ya no está disponible.'">Detalle</p>
+    <a class="btn btn-primary mt-3" th:href="@{/}">Ver espacios</a>
+</main>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Admin · Recursos')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<main class="container">
+    <div th:replace="~{fragments/layout :: alertas}"></div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Recursos</h1>
+        <a class="btn btn-primary" th:href="@{/admin/recursos/nuevo}">Nuevo recurso</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                <tr>
+                    <th>Nombre</th>
+                    <th>Tipo</th>
+                    <th class="text-end">Capacidad</th>
+                    <th class="text-end">Precio/hora</th>
+                    <th>Horario</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${pagina.content}" th:classappend="${!r.activo} ? 'text-body-secondary'">
+                    <td th:text="${r.nombre}">Sala Andes</td>
+                    <td th:text="${#messages.msg('tipo.' + r.tipo)}">Sala</td>
+                    <td class="text-end" th:text="${r.capacidad}">8</td>
+                    <td class="text-end">$<span th:text="${#numbers.formatDecimal(r.precioPorHora, 1, 2, 'POINT')}">25.00</span></td>
+                    <td th:text="${#temporals.format(r.horaApertura, 'HH:mm')} + ' – ' + ${#temporals.format(r.horaCierre, 'HH:mm')}">08:00 – 20:00</td>
+                    <td>
+                        <span th:if="${r.activo}" class="badge text-bg-success">Activo</span>
+                        <span th:unless="${r.activo}" class="badge text-bg-secondary">Inactivo</span>
+                    </td>
+                    <td class="text-end text-nowrap">
+                        <a class="btn btn-outline-primary btn-sm"
+                           th:href="@{/admin/recursos/{id}/editar(id=${r.id})}">Editar</a>
+                        <form th:if="${r.activo}" method="post" class="d-inline"
+                              th:action="@{/admin/recursos/{id}/desactivar(id=${r.id})}"
+                              onsubmit="return confirm('¿Desactivar este recurso? Dejará de aparecer en el catálogo.')">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Desactivar</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${pagina.content.isEmpty()}">
+                    <td colspan="7" class="text-center text-body-secondary py-4">Aún no hay recursos.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <p class="form-text">Para reactivar un recurso, edítalo y marca "Activo".</p>
+
+    <nav th:replace="~{fragments/layout :: paginacion(${pagina}, ${urlPagina})}"></nav>
+</main>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

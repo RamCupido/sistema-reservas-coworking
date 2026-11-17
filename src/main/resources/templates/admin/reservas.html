@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Admin · Reservas')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<main class="container">
+    <div th:replace="~{fragments/layout :: alertas}"></div>
+
+    <h1 class="h3 mb-4">Reservas</h1>
+
+    <form method="get" th:action="@{/admin/reservas}" class="card card-body shadow-sm mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-sm-4 col-lg-3">
+                <label for="estado" class="form-label small">Estado</label>
+                <select id="estado" name="estado" class="form-select">
+                    <option value="">Todos</option>
+                    <option th:each="e : ${estados}" th:value="${e}" th:selected="${e == estado}"
+                            th:text="${#messages.msg('estado.' + e)}">Confirmada</option>
+                </select>
+            </div>
+            <div class="col-sm-4 col-lg-3">
+                <label for="desde" class="form-label small">Desde</label>
+                <input type="date" id="desde" name="desde" class="form-control" th:value="${desde}">
+            </div>
+            <div class="col-sm-4 col-lg-3">
+                <label for="hasta" class="form-label small">Hasta</label>
+                <input type="date" id="hasta" name="hasta" class="form-control" th:value="${hasta}">
+            </div>
+            <div class="col-lg-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-grow-1">Filtrar</button>
+                <a class="btn btn-outline-secondary" th:href="@{/admin/reservas}">Limpiar</a>
+            </div>
+        </div>
+    </form>
+
+    <div class="card shadow-sm" th:if="${pagina != null}">
+        <div class="card-header bg-body small text-body-secondary"
+             th:text="${pagina.totalElements} + ' reserva(s)'">3 reservas</div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Cliente</th>
+                    <th>Espacio</th>
+                    <th>Fecha</th>
+                    <th>Horario</th>
+                    <th>Estado</th>
+                    <th class="text-end">Total</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${pagina.content}">
+                    <td class="text-body-secondary" th:text="${r.id}">1</td>
+                    <td>
+                        <div th:text="${r.usuario.nombre}">Ana</div>
+                        <div class="small text-body-secondary" th:text="${r.usuario.email}">ana@mail.com</div>
+                    </td>
+                    <td th:text="${r.recurso.nombre}">Sala</td>
+                    <td th:text="${#temporals.format(r.fechaInicio, 'dd/MM/yyyy')}">20/11/2026</td>
+                    <td th:text="${#temporals.format(r.fechaInicio, 'HH:mm')} + ' – ' + ${#temporals.format(r.fechaFin, 'HH:mm')}">10:00 – 11:00</td>
+                    <td><span th:replace="~{fragments/estado :: badge(${r.estado})}"></span></td>
+                    <td class="text-end">$<span th:text="${#numbers.formatDecimal(r.precioTotal, 1, 2, 'POINT')}">25.00</span></td>
+                    <td class="text-end">
+                        <!--/* Los filtros viajan como campos ocultos para volver al mismo listado. */-->
+                        <form th:if="${cancelables.contains(r.id)}" method="post" class="m-0"
+                              th:action="@{/admin/reservas/{id}/cancelar(id=${r.id})}"
+                              onsubmit="return confirm('¿Cancelar esta reserva del cliente?')">
+                            <input type="hidden" name="estado" th:value="${estado}" th:if="${estado != null}">
+                            <input type="hidden" name="desde" th:value="${desde}" th:if="${desde != null}">
+                            <input type="hidden" name="hasta" th:value="${hasta}" th:if="${hasta != null}">
+                            <input type="hidden" name="page" th:value="${page}">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Cancelar</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${pagina.content.isEmpty()}">
+                    <td colspan="8" class="text-center text-body-secondary py-4">No hay reservas con estos filtros.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!--/* th:replace se evalúa antes que th:if en el mismo elemento: por eso el th:block exterior. */-->
+    <th:block th:if="${pagina != null}">
+        <nav th:replace="~{fragments/layout :: paginacion(${pagina}, ${urlPagina})}"></nav>
+    </th:block>
+</main>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

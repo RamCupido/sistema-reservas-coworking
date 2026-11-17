@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Crear cuenta')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<main class="container form-estrecho">
+    <h1 class="h3 mb-4">Crear cuenta</h1>
+
+    <!--/* th:object + th:field enlazan los inputs con RegistroForm; th:errors muestra el error del campo. */-->
+    <form th:action="@{/registro}" th:object="${registro}" method="post" class="card card-body shadow-sm" novalidate>
+        <div class="mb-3">
+            <label for="nombre" class="form-label">Nombre</label>
+            <input type="text" th:field="*{nombre}" class="form-control" th:errorclass="is-invalid"
+                   autocomplete="name">
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('nombre')}"
+                 th:text="${#fields.errors('nombre')[0]}">Error</div>
+        </div>
+        <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" th:field="*{email}" class="form-control" th:errorclass="is-invalid"
+                   autocomplete="email">
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('email')}"
+                 th:text="${#fields.errors('email')[0]}">Error</div>
+        </div>
+        <div class="mb-3">
+            <label for="password" class="form-label">Contraseña</label>
+            <input type="password" th:field="*{password}" class="form-control" th:errorclass="is-invalid"
+                   autocomplete="new-password">
+            <div class="form-text" th:unless="${#fields.hasErrors('password')}">Entre 8 y 72 caracteres.</div>
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('password')}"
+                 th:text="${#fields.errors('password')[0]}">Error</div>
+        </div>
+        <div class="mb-3">
+            <label for="confirmarPassword" class="form-label">Repite la contraseña</label>
+            <input type="password" th:field="*{confirmarPassword}" class="form-control"
+                   th:errorclass="is-invalid" autocomplete="new-password">
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('confirmarPassword')}"
+                 th:text="${#fields.errors('confirmarPassword')[0]}">Error</div>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Crear cuenta</button>
+    </form>
+    <p class="text-center mt-3 small">¿Ya tienes cuenta? <a th:href="@{/login}">Entra</a></p>
+</main>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

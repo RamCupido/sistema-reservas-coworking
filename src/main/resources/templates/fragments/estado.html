@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/* Badge de color según el estado de la reserva. */-->
+<span th:fragment="badge(estado)" class="badge"
+      th:classappend="${estado.name() == 'CONFIRMADA'} ? 'text-bg-success'
+                      : (${estado.name() == 'CANCELADA'} ? 'text-bg-secondary' : 'text-bg-info')"
+      th:text="${#messages.msg('estado.' + estado)}">Confirmada</span>
+</body>
+</html>

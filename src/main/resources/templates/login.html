@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Entrar')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<main class="container form-estrecho">
+    <h1 class="h3 mb-4">Entrar</h1>
+
+    <!--/* Mismo mensaje exista o no el email: no se revela qué cuentas existen. */-->
+    <div th:if="${param.error}" class="alert alert-danger">Email o contraseña incorrectos.</div>
+    <div th:if="${param.registrado}" class="alert alert-success">Cuenta creada. Ya puedes entrar.</div>
+
+    <!--/* El POST lo procesa el filtro formLogin de Spring Security, no un controller. */-->
+    <form th:action="@{/login}" method="post" class="card card-body shadow-sm">
+        <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" id="email" name="email" class="form-control" required autofocus
+                   autocomplete="username">
+        </div>
+        <div class="mb-3">
+            <label for="password" class="form-label">Contraseña</label>
+            <input type="password" id="password" name="password" class="form-control" required
+                   autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Entrar</button>
+    </form>
+    <p class="text-center mt-3 small">¿No tienes cuenta? <a th:href="@{/registro}">Créala aquí</a></p>
+</main>
+
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>
