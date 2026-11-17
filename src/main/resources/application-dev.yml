@@ -8,6 +8,9 @@ spring:
     url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:reservas}
     username: ${POSTGRES_USER:reservas}
     password: ${POSTGRES_PASSWORD:cambia-esta-clave}
+  # Plantillas sin caché: los cambios en los .html se ven al recargar el navegador.
+  thymeleaf:
+    cache: false
   jpa:
     show-sql: true
     properties:

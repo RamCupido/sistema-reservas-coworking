@@ -7,6 +7,13 @@ spring:
   jpa:
     show-sql: false
 
+# En producción la app se sirve por HTTPS: la cookie de sesión solo viaja cifrada.
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true
+
 management:
   endpoint:
     health:
