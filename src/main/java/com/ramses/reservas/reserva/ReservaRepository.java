@@ -9,8 +9,10 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Las consultas de listado usan @EntityGraph para traer recurso/usuario en el mismo SELECT
@@ -63,4 +65,50 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long>, JpaSpec
     @Override
     @EntityGraph(attributePaths = {"recurso", "usuario"})
     Page<Reserva> findAll(Specification<Reserva> spec, Pageable pageable);
+
+    // --- Tareas programadas ---
+
+    /** Confirmadas sin recordatorio que empiezan en (ahora, limite]. */
+    @Query("""
+            SELECT r FROM Reserva r
+            WHERE r.estado = com.ramses.reservas.reserva.EstadoReserva.CONFIRMADA
+              AND r.recordatorioEnviadoEn IS NULL
+              AND r.fechaInicio > :ahora
+              AND r.fechaInicio <= :limite
+            ORDER BY r.fechaInicio
+            """)
+    List<Reserva> findCandidatasARecordatorio(@Param("ahora") Instant ahora, @Param("limite") Instant limite);
+
+    /**
+     * "Reclama" el recordatorio de forma atómica: solo una ejecución (o una instancia de la app,
+     * si hubiera varias) consigue pasar de NULL a un valor. Devuelve 1 si lo consiguió, 0 si no.
+     */
+    @Modifying
+    @Transactional
+    @Query("""
+            UPDATE Reserva r SET r.recordatorioEnviadoEn = :ahora
+            WHERE r.id = :id
+              AND r.recordatorioEnviadoEn IS NULL
+              AND r.estado = com.ramses.reservas.reserva.EstadoReserva.CONFIRMADA
+            """)
+    int reclamarRecordatorio(@Param("id") Long id, @Param("ahora") Instant ahora);
+
+    /** Si el envío falla, se libera para reintentarlo en la siguiente ejecución. */
+    @Modifying
+    @Transactional
+    @Query("UPDATE Reserva r SET r.recordatorioEnviadoEn = NULL WHERE r.id = :id")
+    int liberarRecordatorio(@Param("id") Long id);
+
+    /**
+     * Un UPDATE masivo no pasa por la entidad, así que @Version no se incrementa solo:
+     * se suma a mano para que una transacción que tenga la reserva cargada detecte el cambio.
+     */
+    @Modifying
+    @Query("""
+            UPDATE Reserva r
+            SET r.estado = com.ramses.reservas.reserva.EstadoReserva.COMPLETADA, r.version = r.version + 1
+            WHERE r.estado = com.ramses.reservas.reserva.EstadoReserva.CONFIRMADA
+              AND r.fechaFin <= :ahora
+            """)
+    int completarFinalizadas(@Param("ahora") Instant ahora);
 }

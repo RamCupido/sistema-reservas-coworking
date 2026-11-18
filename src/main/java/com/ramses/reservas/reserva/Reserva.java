@@ -67,6 +67,14 @@ public class Reserva {
     @Version
     private Long version;
 
+    /**
+     * Solo lectura para Hibernate (insertable/updatable = false): lo escriben únicamente las
+     * consultas UPDATE de la tarea de recordatorios. Si no, al cancelar una reserva Hibernate
+     * reescribiría todas las columnas y podría pisar este valor con uno antiguo.
+     */
+    @Column(name = "recordatorio_enviado_en", insertable = false, updatable = false)
+    private Instant recordatorioEnviadoEn;
+
     protected Reserva() {
     }
 
