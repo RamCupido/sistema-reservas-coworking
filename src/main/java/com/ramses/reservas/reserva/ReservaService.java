@@ -29,6 +29,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -49,6 +50,7 @@ public class ReservaService {
     private final ReservaMapper reservaMapper;
     private final ReservasProperties reservasProperties;
     private final Clock clock;
+    private final ApplicationEventPublisher eventos;
 
     /**
      * Doble protección contra solapamientos:
@@ -78,15 +80,20 @@ public class ReservaService {
 
         Reserva reserva = new Reserva(usuario, recurso, inicioUtc, finUtc,
                 calcularPrecio(recurso.getPrecioPorHora(), Duration.between(inicio, fin)));
+        Reserva guardada;
         try {
             // saveAndFlush fuerza el INSERT ahora (no al hacer commit) para poder traducir el error aquí.
-            return reservaMapper.toResponse(reservaRepository.saveAndFlush(reserva));
+            guardada = reservaRepository.saveAndFlush(reserva);
         } catch (DataIntegrityViolationException e) {
             if (esViolacionDeSolapamiento(e)) {
                 throw new ConflictoReservaException(recurso.getNombre());
             }
             throw e;
         }
+        // Se publica dentro de la transacción, pero el listener de correo solo actúa tras el
+        // COMMIT (@TransactionalEventListener): si algo hiciera rollback, no se envía nada.
+        eventos.publishEvent(new ReservaCreadaEvent(guardada.getId()));
+        return reservaMapper.toResponse(guardada);
     }
 
     @Transactional(readOnly = true)
@@ -105,6 +112,8 @@ public class ReservaService {
         // Sin save(): la entidad está gestionada; al confirmar, Hibernate hace el UPDATE
         // con "WHERE version = ?" (bloqueo optimista).
         reserva.cancelar();
+        boolean porAdministrador = esAdmin && !reserva.perteneceA(EmailUtils.normalizar(emailUsuario));
+        eventos.publishEvent(new ReservaCanceladaEvent(reserva.getId(), porAdministrador));
         return reservaMapper.toResponse(reserva);
     }
 
@@ -120,6 +129,12 @@ public class ReservaService {
     @Transactional(readOnly = true)
     public long contarFuturas(Long recursoId) {
         return reservaRepository.contarFuturasNoCanceladas(recursoId, Instant.now(clock));
+    }
+
+    /** Tarea programada: las confirmadas que ya terminaron pasan a COMPLETADA. Devuelve cuántas. */
+    @Transactional
+    public int completarFinalizadas() {
+        return reservaRepository.completarFinalizadas(Instant.now(clock));
     }
 
     @Transactional(readOnly = true)
