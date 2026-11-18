@@ -39,6 +39,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -59,6 +60,7 @@ class ReservaServiceTest {
     private final RecursoRepository recursoRepository = mock(RecursoRepository.class);
     private final UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
     private final ReservasProperties properties = new ReservasProperties(ZONA, Duration.ofHours(2));
+    private final ApplicationEventPublisher eventos = mock(ApplicationEventPublisher.class);
 
     private ReservaService service;
     private Recurso sala;
@@ -68,7 +70,7 @@ class ReservaServiceTest {
     void setUp() {
         Clock clock = Clock.fixed(AHORA.atZone(ZONA).toInstant(), ZONA);
         service = new ReservaService(reservaRepository, recursoRepository, usuarioRepository,
-                new ReservaMapper(properties), properties, clock);
+                new ReservaMapper(properties), properties, clock, eventos);
 
         sala = Recurso.builder().nombre("Sala Andes").tipo(TipoRecurso.SALA_REUNIONES).capacidad(8)
                 .precioPorHora(new BigDecimal("25.00")).activo(true)
@@ -322,6 +324,68 @@ class ReservaServiceTest {
 
             assertThatThrownBy(() -> service.cancelar(99L, ANA, false))
                     .isInstanceOf(ReservaNoEncontradaException.class);
+        }
+    }
+
+    /** Los correos dependen de estos eventos: se comprueba qué se publica y cuándo no. */
+    @Nested
+    class Eventos {
+
+        private Reserva reservaDeAnaManana() {
+            Reserva reserva = new Reserva(ana, sala, instante(MANANA.atTime(10, 0)), instante(MANANA.atTime(11, 0)),
+                    new BigDecimal("25.00"));
+            ReflectionTestUtils.setField(reserva, "id", 7L);
+            when(reservaRepository.findConDetalleById(7L)).thenReturn(Optional.of(reserva));
+            return reserva;
+        }
+
+        @Test
+        void crearPublicaReservaCreadaEvent() {
+            when(reservaRepository.saveAndFlush(any(Reserva.class))).thenAnswer(inv -> {
+                Reserva reserva = inv.getArgument(0);
+                ReflectionTestUtils.setField(reserva, "id", 42L);
+                return reserva;
+            });
+
+            service.crear(pedido(MANANA.atTime(10, 0), MANANA.atTime(11, 0)), ANA);
+
+            verify(eventos).publishEvent(new ReservaCreadaEvent(42L));
+        }
+
+        @Test
+        void unaReservaRechazadaNoPublicaNada() {
+            when(reservaRepository.existeSolapamiento(any(), any(), any())).thenReturn(true);
+
+            assertThatThrownBy(() -> service.crear(pedido(MANANA.atTime(10, 0), MANANA.atTime(11, 0)), ANA))
+                    .isInstanceOf(ConflictoReservaException.class);
+            verify(eventos, never()).publishEvent(any(Object.class));
+        }
+
+        @Test
+        void elClienteQueCancelaLaSuyaNoEsPorAdministrador() {
+            reservaDeAnaManana();
+
+            service.cancelar(7L, ANA, false);
+
+            verify(eventos).publishEvent(new ReservaCanceladaEvent(7L, false));
+        }
+
+        @Test
+        void unAdminQueCancelaUnaAjenaEsPorAdministrador() {
+            reservaDeAnaManana();
+
+            service.cancelar(7L, "admin@mail.com", true);
+
+            verify(eventos).publishEvent(new ReservaCanceladaEvent(7L, true));
+        }
+
+        @Test
+        void unaCancelacionRechazadaNoPublicaNada() {
+            reservaDeAnaManana().cancelar();
+
+            assertThatThrownBy(() -> service.cancelar(7L, ANA, false))
+                    .isInstanceOf(ReservaNoCancelableException.class);
+            verify(eventos, never()).publishEvent(any(Object.class));
         }
     }
 
