@@ -11,6 +11,7 @@ recordatorios por correo.
 - **Backend:** Java 21, Spring Boot 3.5, Spring Web, Spring Data JPA, Bean Validation, Actuator
 - **Base de datos:** PostgreSQL 17 con migraciones Flyway
 - **Seguridad:** Spring Security + JWT (OAuth2 Resource Server), BCrypt
+- **Notificaciones:** Spring Mail + plantillas Thymeleaf, `@Async`, `@Scheduled`; Mailpit en desarrollo
 - **Documentación:** springdoc-openapi (Swagger UI)
 - **Frontend:** Thymeleaf + Bootstrap 5 (con Spring Security en las plantillas)
 - **Tests:** JUnit 5, Mockito, MockMvc, Testcontainers
@@ -29,8 +30,8 @@ No hace falta instalar Maven: el proyecto incluye el Maven Wrapper (`./mvnw`).
 # 1. Variables de entorno (una sola vez)
 cp .env.example .env
 
-# 2. Levantar PostgreSQL
-docker compose up -d db
+# 2. Levantar PostgreSQL y Mailpit (SMTP falso para ver los correos)
+docker compose up -d db mailpit
 
 # 3. Ejecutar la aplicación con el perfil dev
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
@@ -42,7 +43,8 @@ El archivo `.env` lo leen tanto `docker-compose` como el perfil `dev` de Spring
 (`spring.config.import`). Si ya tienes otro PostgreSQL en el puerto 5432, cambia
 `POSTGRES_PORT` en `.env` y listo.
 
-Abre **http://localhost:8080** para usar la web. Comprueba que la app está viva en:
+Abre **http://localhost:8080** para usar la web y **http://localhost:8025** para ver los correos
+que envía la app (Mailpit los atrapa; no llegan a nadie de verdad). Comprueba que la app está viva en:
 http://localhost:8080/actuator/health
 
 ## Documentación de la API (Swagger)
@@ -81,6 +83,10 @@ usuario con rol `ADMIN` al arrancar (solo si aún no existe). El registro públi
 | `JWT_EXPIRACION` | No | Duración del token (por defecto `1h`) |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | No | Administrador inicial |
 | `DB_URL` / `DB_USER` / `DB_PASSWORD` | Solo en `prod` | Conexión a PostgreSQL |
+| `MAIL_HOST` / `MAIL_PORT` | No | SMTP (por defecto `localhost:1025`, Mailpit) |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_SMTP_AUTH` / `MAIL_STARTTLS` | No | Credenciales de un SMTP real |
+| `NOTIFICACIONES_HABILITADAS` | No | `false` = los correos solo se registran en el log (en `prod`, `false` por defecto) |
+| `NOTIFICACIONES_URL_BASE` | No | URL pública de la app para los enlaces de los correos |
 
 ## Recursos
 
@@ -148,6 +154,29 @@ no hay filas que bloquear (*phantom*), y porque la garantía vive en la base de 
 de que todo el código recuerde tomar el bloqueo. Un test lanza 10 peticiones simultáneas y verifica
 que exactamente una gana.
 
+## Notificaciones por correo
+
+| Correo | Cuándo |
+|--------|--------|
+| Confirmación | Al crear una reserva |
+| Cancelación | Al cancelarla (el texto indica si la canceló la administración) |
+| Recordatorio | 24 h antes del inicio, por una tarea programada cada 15 min |
+
+Otra tarea programada pasa a `COMPLETADA` las reservas confirmadas que ya terminaron.
+
+**Cómo se envían.** `ReservaService` no sabe nada de correos: publica un evento de dominio
+(`ReservaCreadaEvent`, `ReservaCanceladaEvent`) y `NotificacionListener` lo atiende con:
+
+- `@TransactionalEventListener(AFTER_COMMIT)` → solo se envía si la reserva quedó guardada; si la transacción
+  hace rollback (p. ej. un conflicto de horario), no sale ningún correo.
+- `@Async` → se envía en otro hilo; el usuario no espera al SMTP. Si el SMTP falla, la reserva sigue confirmada
+  y el error queda en el log. Los timeouts SMTP (5 s) evitan hilos colgados.
+
+**Recordatorios sin duplicados.** La columna `recordatorio_enviado_en` se "reclama" con un `UPDATE ... WHERE
+recordatorio_enviado_en IS NULL` atómico antes de enviar: aunque la tarea corra dos veces (o en dos instancias),
+solo una gana. Si el envío falla, se libera para reintentarlo. Las reservas hechas con menos de 24 h de
+antelación no reciben recordatorio (ya recibieron la confirmación).
+
 ## Frontend web (Thymeleaf)
 
 | Ruta | Acceso | Qué hace |
@@ -212,7 +241,8 @@ En la web, los errores se muestran como páginas HTML (`templates/error/`) y los
 ```
 
 Los tests de integración levantan un PostgreSQL real en un contenedor con Testcontainers,
-así que Docker tiene que estar en marcha.
+así que Docker tiene que estar en marcha. El SMTP se sustituye por un doble en memoria (`CorreoFalso`)
+y las tareas programadas se apagan en el perfil `test`: los tests las invocan directamente.
 
 ## Perfiles
 
@@ -231,5 +261,5 @@ Los secretos nunca se guardan en el repositorio: se leen desde variables de ento
 - [x] **Fase 2** — CRUD de recursos, manejo global de errores, Swagger
 - [x] **Fase 3** — Reservas: solapamiento, concurrencia, cancelación y disponibilidad
 - [x] **Fase 4** — Frontend Thymeleaf: catálogo, agenda, mis reservas y panel de admin
-- [ ] **Fase 5** — Notificaciones por correo y recordatorios programados
+- [x] **Fase 5** — Notificaciones por correo y recordatorios programados
 - [ ] **Fase 6** — Dockerfile, CI con GitHub Actions y despliegue
