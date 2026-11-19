@@ -13,12 +13,13 @@ import org.springframework.test.context.ActiveProfiles;
  * Meta-anotación para tests de integración. Que todos usen exactamente la misma
  * configuración permite a Spring reutilizar un único contexto (y un único contenedor
  * PostgreSQL) para toda la suite, en lugar de levantar uno por clase.
+ * CorreoTestConfig reemplaza el SMTP por {@link CorreoFalso} en todos los tests.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Import(TestcontainersConfig.class)
+@Import({TestcontainersConfig.class, CorreoTestConfig.class})
 public @interface IntegracionTest {
 }

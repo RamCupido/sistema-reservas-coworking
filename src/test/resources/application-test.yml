@@ -3,6 +3,11 @@ jwt:
   # Clave solo para tests; nunca se usa fuera de este perfil.
   secret: clave-de-tests-no-usar-en-produccion-0123456789
 
+# Las tareas programadas no se disparan solas en los tests: se llaman directamente.
+reservas:
+  tareas:
+    habilitadas: false
+
 logging:
   level:
     com.ramses.reservas: DEBUG
