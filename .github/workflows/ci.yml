@@ -1,0 +1,76 @@
+# Integración continua: compila y ejecuta TODOS los tests (unitarios + integración con
+# Testcontainers) en cada push a main y en cada pull request hacia main.
+# Si algo falla, el commit o el PR queda marcado en rojo en GitHub.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Permite lanzarlo a mano desde la pestaña "Actions".
+  workflow_dispatch:
+
+# Principio de mínimo privilegio: el workflow solo necesita leer el código.
+permissions:
+  contents: read
+
+# Si llegan dos pushes seguidos a la misma rama, se cancela la ejecución anterior (ahorra minutos).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Compilar y testear (Java 21)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      # cache: maven guarda ~/.m2 entre ejecuciones: no se descargan las dependencias cada vez.
+      - name: Instalar Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # verify = compilar + tests + empaquetar el .jar.
+      # -B: modo batch (logs limpios); -ntp: sin barras de progreso de descarga.
+      # Testcontainers funciona sin configurar nada: los runners de GitHub traen Docker.
+      - name: Compilar y ejecutar los tests
+        run: ./mvnw -B -ntp verify
+
+      # Resumen visible en la página de la ejecución (pestaña "Summary"), pasen o fallen los tests.
+      - name: Resumen de tests
+        if: always()
+        run: |
+          shopt -s nullglob
+          informes=(target/surefire-reports/TEST-*.xml)
+          if [ ${#informes[@]} -eq 0 ]; then
+            echo "No se generaron informes de tests." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # Se cuentan las etiquetas <testcase>, <failure>... en vez del atributo tests="" de <testsuite>:
+          # Surefire funde las clases @Nested en un solo informe y ese atributo no cuenta dos veces
+          # un método con el mismo nombre en dos clases anidadas.
+          contar() { cat "${informes[@]}" | grep -o "<$1[ >/]" | wc -l; }
+          {
+            echo "### Resultado de los tests"
+            echo ""
+            echo "| Total | Fallos | Errores | Omitidos |"
+            echo "|------:|-------:|--------:|---------:|"
+            echo "| $(contar testcase) | $(contar failure) | $(contar error) | $(contar skipped) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Si falla, los informes detallados quedan descargables 7 días desde la ejecución.
+      - name: Guardar informes de tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes-surefire
+          path: target/surefire-reports/
+          retention-days: 7
