@@ -31,6 +31,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -414,6 +415,36 @@ class ReservaServiceTest {
                     .isInstanceOf(ReservaNoEncontradaException.class);
             assertThat(service.obtener(7L, ANA, false).recurso().nombre()).isEqualTo("Sala Andes");
             assertThat(service.obtener(7L, "admin@mail.com", true)).isNotNull();
+        }
+
+        @Test
+        void listarMiasEntreBuscaDesdeElInicioDelPrimerDiaHastaElFinDelUltimoEnLaZonaDelNegocio() {
+            Reserva reserva = new Reserva(ana, sala, instante(MANANA.atTime(10, 0)), instante(MANANA.atTime(11, 0)));
+            // 16/11 00:00 en Guayaquil = 05:00 UTC; hasta es exclusivo: 18/11 00:00 Guayaquil = 18/11 05:00 UTC
+            when(reservaRepository.findDeUsuarioEntre(ANA, Instant.parse("2026-11-16T05:00:00Z"),
+                    Instant.parse("2026-11-18T05:00:00Z"))).thenReturn(List.of(reserva));
+
+            List<ReservaResponse> reservas = service.listarMiasEntre("  ANA@mail.com ", HOY, MANANA);
+
+            assertThat(reservas).singleElement()
+                    .satisfies(r -> assertThat(r.fechaInicio()).isEqualTo(MANANA.atTime(10, 0)));
+        }
+
+        @Test
+        void listarMiasEntreConDesdePosteriorAHastaEsInvalido() {
+            assertThatThrownBy(() -> service.listarMiasEntre(ANA, MANANA, HOY))
+                    .isInstanceOf(FiltroInvalidoException.class);
+        }
+
+        @Test
+        void proximaBuscaLaPrimeraConfirmadaQueAunNoEmpieza() {
+            Reserva reserva = new Reserva(ana, sala, instante(MANANA.atTime(10, 0)), instante(MANANA.atTime(11, 0)));
+            when(reservaRepository.findFirstByUsuarioEmailAndEstadoAndFechaInicioAfterOrderByFechaInicioAsc(
+                    ANA, EstadoReserva.CONFIRMADA, instante(AHORA))).thenReturn(Optional.of(reserva));
+
+            assertThat(service.proxima(ANA)).hasValueSatisfying(
+                    r -> assertThat(r.recurso().nombre()).isEqualTo("Sala Andes"));
+            assertThat(service.proxima("beto@mail.com")).isEmpty();
         }
 
         @Test

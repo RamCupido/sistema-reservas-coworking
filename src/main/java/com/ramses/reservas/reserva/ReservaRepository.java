@@ -59,6 +59,23 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long>, JpaSpec
     @EntityGraph(attributePaths = {"recurso", "usuario"})
     Page<Reserva> findByUsuarioEmail(String email, Pageable pageable);
 
+    /** Reservas del usuario que empiezan en [desde, hasta), para el calendario. */
+    @EntityGraph(attributePaths = {"recurso", "usuario"})
+    @Query("""
+            SELECT r FROM Reserva r
+            WHERE r.usuario.email = :email
+              AND r.fechaInicio >= :desde
+              AND r.fechaInicio < :hasta
+            ORDER BY r.fechaInicio
+            """)
+    List<Reserva> findDeUsuarioEntre(@Param("email") String email,
+                                     @Param("desde") Instant desde,
+                                     @Param("hasta") Instant hasta);
+
+    @EntityGraph(attributePaths = {"recurso", "usuario"})
+    Optional<Reserva> findFirstByUsuarioEmailAndEstadoAndFechaInicioAfterOrderByFechaInicioAsc(
+            String email, EstadoReserva estado, Instant despuesDe);
+
     @EntityGraph(attributePaths = {"recurso", "usuario"})
     Page<Reserva> findByUsuarioEmailAndEstado(String email, EstadoReserva estado, Pageable pageable);
 

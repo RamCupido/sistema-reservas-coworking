@@ -26,6 +26,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -141,6 +142,30 @@ public class ReservaService {
                 ? reservaRepository.findByUsuarioEmail(email, pageable)
                 : reservaRepository.findByUsuarioEmailAndEstado(email, estado, pageable);
         return PaginaResponse.of(pagina.map(reservaMapper::toResponse));
+    }
+
+    /**
+     * Reservas del usuario (de cualquier estado) cuyo día de inicio, en la zona del negocio,
+     * está entre desde y hasta, ambos inclusivos. Sin paginar: lo usa el calendario mensual,
+     * que como mucho muestra 6 semanas.
+     */
+    @Transactional(readOnly = true)
+    public List<ReservaResponse> listarMiasEntre(String emailUsuario, LocalDate desde, LocalDate hasta) {
+        if (desde.isAfter(hasta)) {
+            throw new FiltroInvalidoException("'desde' no puede ser posterior a 'hasta'");
+        }
+        ZoneId zona = reservasProperties.zonaHoraria();
+        return reservaRepository.findDeUsuarioEntre(EmailUtils.normalizar(emailUsuario),
+                        desde.atStartOfDay(zona).toInstant(), hasta.plusDays(1).atStartOfDay(zona).toInstant())
+                .stream().map(reservaMapper::toResponse).toList();
+    }
+
+    /** La próxima reserva confirmada que aún no ha empezado (para la página de inicio). */
+    @Transactional(readOnly = true)
+    public Optional<ReservaResponse> proxima(String emailUsuario) {
+        return reservaRepository.findFirstByUsuarioEmailAndEstadoAndFechaInicioAfterOrderByFechaInicioAsc(
+                        EmailUtils.normalizar(emailUsuario), EstadoReserva.CONFIRMADA, Instant.now(clock))
+                .map(reservaMapper::toResponse);
     }
 
     /** desde/hasta filtran por el día de inicio (en la zona del negocio), ambos inclusivos. */
