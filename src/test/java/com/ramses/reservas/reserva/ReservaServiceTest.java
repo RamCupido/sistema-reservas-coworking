@@ -23,7 +23,6 @@ import com.ramses.reservas.reserva.dto.ReservaResponse;
 import com.ramses.reservas.usuario.Rol;
 import com.ramses.reservas.usuario.Usuario;
 import com.ramses.reservas.usuario.UsuarioRepository;
-import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Duration;
@@ -73,7 +72,7 @@ class ReservaServiceTest {
                 new ReservaMapper(properties), properties, clock, eventos);
 
         sala = Recurso.builder().nombre("Sala Andes").tipo(TipoRecurso.SALA_REUNIONES).capacidad(8)
-                .precioPorHora(new BigDecimal("25.00")).activo(true)
+                .activo(true)
                 .horaApertura(LocalTime.of(8, 0)).horaCierre(LocalTime.of(20, 0)).build();
         ana = new Usuario("Ana", ANA, "hash", Rol.CLIENTE);
 
@@ -94,7 +93,7 @@ class ReservaServiceTest {
     class Crear {
 
         @Test
-        void reservaValidaQuedaConfirmadaConPrecioCalculadoYFechasEnUtc() {
+        void reservaValidaQuedaConfirmadaConFechasEnUtc() {
             ReservaResponse respuesta = service.crear(
                     pedido(MANANA.atTime(10, 0), MANANA.atTime(11, 30)), ANA);
 
@@ -102,7 +101,6 @@ class ReservaServiceTest {
             verify(reservaRepository).saveAndFlush(captor.capture());
             Reserva guardada = captor.getValue();
             assertThat(guardada.getEstado()).isEqualTo(EstadoReserva.CONFIRMADA);
-            assertThat(guardada.getPrecioTotal()).isEqualByComparingTo("37.50"); // 1,5 h × 25,00
             // 10:00 en Guayaquil (UTC-5) = 15:00 UTC
             assertThat(guardada.getFechaInicio()).isEqualTo(Instant.parse("2026-11-17T15:00:00Z"));
             // La respuesta vuelve a hora local
@@ -212,28 +210,11 @@ class ReservaServiceTest {
     }
 
     @Nested
-    class CalculoPrecio {
-
-        @ParameterizedTest(name = "{1} min × {0}/h = {2}")
-        @CsvSource({
-                "25.00, 30, 12.50",
-                "25.00, 90, 37.50",
-                "25.50, 90, 38.25",
-                "33.33, 30, 16.67", // redondeo HALF_UP a 2 decimales
-                "0.00, 120, 0.00"
-        })
-        void precioEsHorasPorPrecioPorHora(String precioPorHora, long minutos, String esperado) {
-            assertThat(ReservaService.calcularPrecio(new BigDecimal(precioPorHora), Duration.ofMinutes(minutos)))
-                    .isEqualByComparingTo(esperado);
-        }
-    }
-
-    @Nested
     class Cancelar {
 
         private Reserva reservaDeAnaQueEmpiezaEn(Duration dentroDe) {
             Instant inicio = instante(AHORA).plus(dentroDe);
-            Reserva reserva = new Reserva(ana, sala, inicio, inicio.plus(Duration.ofHours(1)), new BigDecimal("25.00"));
+            Reserva reserva = new Reserva(ana, sala, inicio, inicio.plus(Duration.ofHours(1)));
             when(reservaRepository.findConDetalleById(7L)).thenReturn(Optional.of(reserva));
             return reserva;
         }
@@ -332,8 +313,7 @@ class ReservaServiceTest {
     class Eventos {
 
         private Reserva reservaDeAnaManana() {
-            Reserva reserva = new Reserva(ana, sala, instante(MANANA.atTime(10, 0)), instante(MANANA.atTime(11, 0)),
-                    new BigDecimal("25.00"));
+            Reserva reserva = new Reserva(ana, sala, instante(MANANA.atTime(10, 0)), instante(MANANA.atTime(11, 0)));
             ReflectionTestUtils.setField(reserva, "id", 7L);
             when(reservaRepository.findConDetalleById(7L)).thenReturn(Optional.of(reserva));
             return reserva;
@@ -395,8 +375,7 @@ class ReservaServiceTest {
 
         private ReservaResponse reservaQueEmpiezaEn(Duration dentroDe, EstadoReserva estado) {
             LocalDateTime inicio = AHORA.plus(dentroDe);
-            return new ReservaResponse(7L, null, null, inicio, inicio.plusHours(1), estado,
-                    new BigDecimal("25.00"), Instant.now());
+            return new ReservaResponse(7L, null, null, inicio, inicio.plusHours(1), estado, Instant.now());
         }
 
         @ParameterizedTest(name = "faltan {0} min, admin={1} → {2}")
@@ -428,7 +407,7 @@ class ReservaServiceTest {
         @Test
         void clienteNoPuedeVerUnaReservaAjena() {
             Reserva reserva = new Reserva(ana, sala, instante(MANANA.atTime(10, 0)),
-                    instante(MANANA.atTime(11, 0)), BigDecimal.TEN);
+                    instante(MANANA.atTime(11, 0)));
             when(reservaRepository.findConDetalleById(7L)).thenReturn(Optional.of(reserva));
 
             assertThatThrownBy(() -> service.obtener(7L, "beto@mail.com", false))

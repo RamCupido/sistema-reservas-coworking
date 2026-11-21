@@ -12,7 +12,6 @@ import com.ramses.reservas.common.exception.NombreRecursoDuplicadoException;
 import com.ramses.reservas.common.exception.RecursoNoEncontradoException;
 import com.ramses.reservas.recurso.dto.RecursoRequest;
 import com.ramses.reservas.recurso.dto.RecursoResponse;
-import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -35,12 +34,12 @@ class RecursoServiceTest {
 
     private static RecursoRequest request(String nombre, String apertura, String cierre, Boolean activo) {
         return new RecursoRequest(nombre, "desc", TipoRecurso.SALA_REUNIONES, 8,
-                new BigDecimal("25.00"), LocalTime.parse(apertura), LocalTime.parse(cierre), activo);
+                LocalTime.parse(apertura), LocalTime.parse(cierre), activo);
     }
 
     private static Recurso recursoExistente(boolean activo) {
         return Recurso.builder().nombre("Sala Andes").tipo(TipoRecurso.SALA_REUNIONES).capacidad(8)
-                .precioPorHora(new BigDecimal("25.00")).activo(activo)
+                .activo(activo)
                 .horaApertura(LocalTime.of(8, 0)).horaCierre(LocalTime.of(20, 0)).build();
     }
 
@@ -55,18 +54,6 @@ class RecursoServiceTest {
         verify(recursoRepository).save(captor.capture());
         assertThat(captor.getValue().getNombre()).isEqualTo("Sala Andes");
         assertThat(captor.getValue().isActivo()).isTrue();
-        assertThat(respuesta.precioPorHora()).isEqualByComparingTo("25.00");
-    }
-
-    @Test
-    void crearNormalizaElPrecioADosDecimales() {
-        when(recursoRepository.save(any(Recurso.class))).thenAnswer(inv -> inv.getArgument(0));
-        RecursoRequest sinDecimales = new RecursoRequest("Sala", null, TipoRecurso.SALA_REUNIONES, 8,
-                new BigDecimal("30"), LocalTime.of(8, 0), LocalTime.of(20, 0), null);
-
-        RecursoResponse respuesta = recursoService.crear(sinDecimales);
-
-        assertThat(respuesta.precioPorHora()).hasToString("30.00");
     }
 
     @Test

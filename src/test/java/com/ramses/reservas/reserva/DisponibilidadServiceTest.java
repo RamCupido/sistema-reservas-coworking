@@ -15,7 +15,6 @@ import com.ramses.reservas.reserva.dto.DisponibilidadResponse;
 import com.ramses.reservas.reserva.dto.DisponibilidadResponse.Bloque;
 import com.ramses.reservas.usuario.Rol;
 import com.ramses.reservas.usuario.Usuario;
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -44,14 +43,14 @@ class DisponibilidadServiceTest {
         service = new DisponibilidadService(recursoRepository, reservaRepository,
                 new ReservasProperties(ZONA, Duration.ofHours(2)), ahora);
         sala = Recurso.builder().nombre("Sala").tipo(TipoRecurso.SALA_REUNIONES).capacidad(4)
-                .precioPorHora(BigDecimal.TEN).activo(true)
+                .activo(true)
                 .horaApertura(LocalTime.of(9, 0)).horaCierre(LocalTime.of(12, 0)).build();
         when(recursoRepository.findById(1L)).thenReturn(Optional.of(sala));
     }
 
     private Reserva reserva(LocalDateTime inicio, LocalDateTime fin) {
         return new Reserva(new Usuario("Ana", "ana@mail.com", "x", Rol.CLIENTE), sala,
-                inicio.atZone(ZONA).toInstant(), fin.atZone(ZONA).toInstant(), BigDecimal.TEN);
+                inicio.atZone(ZONA).toInstant(), fin.atZone(ZONA).toInstant());
     }
 
     private static List<String> libres(DisponibilidadResponse respuesta) {

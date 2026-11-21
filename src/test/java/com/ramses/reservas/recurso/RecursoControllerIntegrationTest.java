@@ -14,7 +14,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ramses.reservas.IntegracionTest;
 import com.ramses.reservas.LimpiadorBaseDatos;
-import java.math.BigDecimal;
 import java.time.LocalTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -57,14 +56,14 @@ class RecursoControllerIntegrationTest {
 
     private Recurso guardar(String nombre, TipoRecurso tipo, int capacidad, boolean activo) {
         return recursoRepository.save(Recurso.builder().nombre(nombre).descripcion("desc").tipo(tipo)
-                .capacidad(capacidad).precioPorHora(new BigDecimal("20.00")).activo(activo)
+                .capacidad(capacidad).activo(activo)
                 .horaApertura(LocalTime.of(8, 0)).horaCierre(LocalTime.of(20, 0)).build());
     }
 
     private static String json(String nombre, String apertura, String cierre) {
         return """
                 {"nombre": "%s", "descripcion": "Sala luminosa", "tipo": "SALA_REUNIONES",
-                 "capacidad": 8, "precioPorHora": 25.50, "horaApertura": "%s", "horaCierre": "%s"}
+                 "capacidad": 8, "horaApertura": "%s", "horaCierre": "%s"}
                 """.formatted(nombre, apertura, cierre);
     }
 
@@ -129,8 +128,7 @@ class RecursoControllerIntegrationTest {
             mockMvc.perform(get(URL + "/{id}", recurso.getId()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.nombre").value("Sala Andes"))
-                    .andExpect(jsonPath("$.horaApertura").value("08:00"))
-                    .andExpect(jsonPath("$.precioPorHora").value(20.00));
+                    .andExpect(jsonPath("$.horaApertura").value("08:00"));
         }
 
         @Test
@@ -166,20 +164,18 @@ class RecursoControllerIntegrationTest {
                     .andExpect(header().string("Location", containsString(URL + "/")))
                     .andExpect(jsonPath("$.id").isNumber())
                     .andExpect(jsonPath("$.activo").value(true))
-                    .andExpect(jsonPath("$.precioPorHora").value(25.50));
+                    .andExpect(jsonPath("$.precioPorHora").doesNotExist()); // no hay pagos
         }
 
         @Test
         void crearConDatosInvalidosDevuelve400() throws Exception {
             String body = """
-                    {"nombre": "", "tipo": "SALA_REUNIONES", "capacidad": 0, "precioPorHora": -5,
-                     "horaApertura": "08:00", "horaCierre": "20:00"}
+                    {"nombre": "", "tipo": "SALA_REUNIONES", "capacidad": 0, "horaApertura": "08:00", "horaCierre": "20:00"}
                     """;
             mockMvc.perform(post(URL).with(admin()).contentType(MediaType.APPLICATION_JSON).content(body))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.errores.nombre").exists())
-                    .andExpect(jsonPath("$.errores.capacidad").exists())
-                    .andExpect(jsonPath("$.errores.precioPorHora").exists());
+                    .andExpect(jsonPath("$.errores.capacidad").exists());
         }
 
         @Test

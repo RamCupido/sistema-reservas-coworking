@@ -22,7 +22,6 @@ import com.ramses.reservas.usuario.Rol;
 import com.ramses.reservas.usuario.Usuario;
 import com.ramses.reservas.usuario.UsuarioRepository;
 import jakarta.mail.internet.MimeMessage;
-import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -78,7 +77,7 @@ class NotificacionIntegrationTest {
         nora = usuarioRepository.save(new Usuario("Nora", NORA, "x", Rol.CLIENTE));
         usuarioRepository.save(new Usuario("Omar", "omar@mail.com", "x", Rol.CLIENTE));
         sala = recursoRepository.save(Recurso.builder().nombre("Sala Andes").tipo(TipoRecurso.SALA_REUNIONES)
-                .capacidad(8).precioPorHora(new BigDecimal("25.00")).activo(true)
+                .capacidad(8).activo(true)
                 .horaApertura(LocalTime.of(8, 0)).horaCierre(LocalTime.of(20, 0)).build());
     }
 
@@ -98,7 +97,6 @@ class NotificacionIntegrationTest {
             assertThat(html(mensaje))
                     .contains("Hola <strong>Nora</strong>")
                     .contains("10:00 – 11:30")
-                    .contains("$<span>37.50</span>")
                     .contains("#" + reserva.id())
                     .contains("http://localhost:8080/mis-reservas");
         }
@@ -165,8 +163,7 @@ class NotificacionIntegrationTest {
         /** Inserta sin pasar por el service (sin evento) y ajusta la fecha de creación en la BD. */
         private Reserva reservaQueEmpiezaEn(Duration empiezaEn, Duration creadaHace) {
             Instant inicio = Instant.now().plus(empiezaEn).truncatedTo(ChronoUnit.MINUTES);
-            Reserva reserva = reservaRepository.save(new Reserva(nora, sala, inicio, inicio.plus(Duration.ofHours(1)),
-                    new BigDecimal("25.00")));
+            Reserva reserva = reservaRepository.save(new Reserva(nora, sala, inicio, inicio.plus(Duration.ofHours(1))));
             jdbcTemplate.update("UPDATE reservas SET fecha_creacion = ? WHERE id = ?",
                     Timestamp.from(Instant.now().minus(creadaHace)), reserva.getId());
             return reserva;
@@ -242,7 +239,7 @@ class NotificacionIntegrationTest {
 
         private Reserva reserva(Duration inicioDesdeAhora, Duration duracion) {
             Instant inicio = Instant.now().plus(inicioDesdeAhora).truncatedTo(ChronoUnit.MINUTES);
-            return reservaRepository.save(new Reserva(nora, sala, inicio, inicio.plus(duracion), BigDecimal.TEN));
+            return reservaRepository.save(new Reserva(nora, sala, inicio, inicio.plus(duracion)));
         }
 
         private Reserva recargar(Reserva reserva) {

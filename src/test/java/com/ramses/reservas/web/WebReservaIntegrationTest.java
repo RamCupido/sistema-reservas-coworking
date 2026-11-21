@@ -28,7 +28,6 @@ import com.ramses.reservas.reserva.dto.ReservaResponse;
 import com.ramses.reservas.usuario.Rol;
 import com.ramses.reservas.usuario.Usuario;
 import com.ramses.reservas.usuario.UsuarioRepository;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -68,7 +67,7 @@ class WebReservaIntegrationTest {
         usuarioRepository.save(new Usuario("Ana", ANA, "hash", Rol.CLIENTE));
         usuarioRepository.save(new Usuario("Beto", "beto@mail.com", "hash", Rol.CLIENTE));
         sala = recursoRepository.save(Recurso.builder().nombre("Sala Andes").tipo(TipoRecurso.SALA_REUNIONES)
-                .capacidad(8).precioPorHora(new BigDecimal("25.00")).activo(true)
+                .capacidad(8).activo(true)
                 .horaApertura(LocalTime.of(8, 0)).horaCierre(LocalTime.of(20, 0)).build());
     }
 
@@ -139,7 +138,7 @@ class WebReservaIntegrationTest {
         void reservaDesdeElFormularioYRedirigeAMisReservas() throws Exception {
             mockMvc.perform(formularioReserva("10:00", "11:30"))
                     .andExpect(redirectedUrl("/mis-reservas"))
-                    .andExpect(flash().attribute("exito", containsString("$37.50")));
+                    .andExpect(flash().attribute("exito", containsString("Reserva confirmada: Sala Andes")));
 
             assertThat(reservaRepository.count()).isEqualTo(1);
         }

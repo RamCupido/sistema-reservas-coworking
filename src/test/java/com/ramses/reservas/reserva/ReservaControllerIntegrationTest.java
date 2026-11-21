@@ -19,7 +19,6 @@ import com.ramses.reservas.recurso.TipoRecurso;
 import com.ramses.reservas.usuario.Rol;
 import com.ramses.reservas.usuario.Usuario;
 import com.ramses.reservas.usuario.UsuarioRepository;
-import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -68,7 +67,7 @@ class ReservaControllerIntegrationTest {
         usuarioRepository.save(new Usuario("Beto", BETO, "x", Rol.CLIENTE));
         usuarioRepository.save(new Usuario("Admin", "admin@mail.com", "x", Rol.ADMIN));
         sala = recursoRepository.save(Recurso.builder().nombre("Sala Andes").tipo(TipoRecurso.SALA_REUNIONES)
-                .capacidad(8).precioPorHora(new BigDecimal("25.50")).activo(true)
+                .capacidad(8).activo(true)
                 .horaApertura(LocalTime.of(8, 0)).horaCierre(LocalTime.of(20, 0)).build());
     }
 
@@ -100,19 +99,19 @@ class ReservaControllerIntegrationTest {
     private Reserva insertarDirecto(String email, Instant inicio, Duration duracion) {
         Usuario usuario = usuarioRepository.findByEmail(email).orElseThrow();
         return reservaRepository.saveAndFlush(
-                new Reserva(usuario, sala, inicio, inicio.plus(duracion), new BigDecimal("25.50")));
+                new Reserva(usuario, sala, inicio, inicio.plus(duracion)));
     }
 
     @Nested
     class Crear {
 
         @Test
-        void reservaValidaDevuelve201ConPrecioCalculadoYLocation() throws Exception {
+        void reservaValidaDevuelve201ConLocation() throws Exception {
             reservar(cliente(ANA), sala.getId(), "10:00", "11:30")
                     .andExpect(status().isCreated())
                     .andExpect(header().string("Location", containsString(RESERVAS + "/")))
                     .andExpect(jsonPath("$.estado").value("CONFIRMADA"))
-                    .andExpect(jsonPath("$.precioTotal").value(38.25)) // 1,5 h × 25,50
+                    .andExpect(jsonPath("$.precioTotal").doesNotExist()) // no hay pagos
                     .andExpect(jsonPath("$.fechaInicio").value(dia + "T10:00"))
                     .andExpect(jsonPath("$.fechaFin").value(dia + "T11:30"))
                     .andExpect(jsonPath("$.recurso.nombre").value("Sala Andes"))

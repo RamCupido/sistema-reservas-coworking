@@ -14,7 +14,6 @@ import com.ramses.reservas.reserva.Reserva;
 import com.ramses.reservas.reserva.ReservaRepository;
 import com.ramses.reservas.usuario.Rol;
 import com.ramses.reservas.usuario.Usuario;
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -45,11 +44,11 @@ class RecordatorioServiceTest {
     /** Reserva con id y fecha de creación (normalmente los pone la BD / Hibernate). */
     private static Reserva reserva(long id, Duration empiezaEn, Duration creadaHace) {
         Recurso sala = Recurso.builder().nombre("Sala").tipo(TipoRecurso.SALA_REUNIONES).capacidad(4)
-                .precioPorHora(BigDecimal.TEN).activo(true)
+                .activo(true)
                 .horaApertura(LocalTime.of(8, 0)).horaCierre(LocalTime.of(20, 0)).build();
         Instant inicio = AHORA.plus(empiezaEn);
         Reserva reserva = new Reserva(new Usuario("Ana", "ana@mail.com", "x", Rol.CLIENTE), sala,
-                inicio, inicio.plus(Duration.ofHours(1)), BigDecimal.TEN);
+                inicio, inicio.plus(Duration.ofHours(1)));
         ReflectionTestUtils.setField(reserva, "id", id);
         ReflectionTestUtils.setField(reserva, "fechaCreacion", AHORA.minus(creadaHace));
         return reserva;

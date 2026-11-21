@@ -13,7 +13,6 @@ import com.ramses.reservas.reserva.dto.CrearReservaRequest;
 import com.ramses.reservas.usuario.Rol;
 import com.ramses.reservas.usuario.Usuario;
 import com.ramses.reservas.usuario.UsuarioRepository;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -64,7 +63,7 @@ class ConcurrenciaReservaIntegrationTest {
             usuarioRepository.save(new Usuario("Usuario " + i, "usuario" + i + "@mail.com", "x", Rol.CLIENTE));
         }
         sala = recursoRepository.save(Recurso.builder().nombre("Sala Concurrida").tipo(TipoRecurso.SALA_REUNIONES)
-                .capacidad(4).precioPorHora(new BigDecimal("10.00")).activo(true)
+                .capacidad(4).activo(true)
                 .horaApertura(LocalTime.of(8, 0)).horaCierre(LocalTime.of(20, 0)).build());
     }
 
@@ -138,6 +137,6 @@ class ConcurrenciaReservaIntegrationTest {
         Usuario usuario = usuarioRepository.findByEmail("usuario0@mail.com").orElseThrow();
         Instant desde = inicio.atZone(ZONA).toInstant();
         Instant hasta = fin.atZone(ZONA).toInstant();
-        return reservaRepository.saveAndFlush(new Reserva(usuario, sala, desde, hasta, BigDecimal.TEN));
+        return reservaRepository.saveAndFlush(new Reserva(usuario, sala, desde, hasta));
     }
 }
