@@ -3,30 +3,41 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head(${recurso.nombre})}"></head>
 <body>
-<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<nav th:replace="~{fragments/layout :: navbar('espacios')}"></nav>
 
-<main class="container" th:with="fecha=${disponibilidad.fecha}">
+<main class="container pt-4" th:with="fecha=${disponibilidad.fecha}">
     <div th:replace="~{fragments/layout :: alertas}"></div>
 
-    <a th:href="@{/}" class="small text-decoration-none">&larr; Todos los espacios</a>
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mt-2 mb-4">
-        <div>
-            <span class="badge text-bg-light border mb-2" th:text="${#messages.msg('tipo.' + recurso.tipo)}">Sala</span>
-            <h1 class="h3 mb-1" th:text="${recurso.nombre}">Sala Andes</h1>
-            <p class="text-body-secondary mb-0" th:text="${recurso.descripcion}">Descripción</p>
+    <a th:href="@{/} + '#espacios'" class="small text-decoration-none d-inline-flex align-items-center gap-1">
+        <svg th:replace="~{fragments/iconos :: icono('izquierda', '')}"></svg> Todos los espacios
+    </a>
+    <div class="d-flex flex-wrap align-items-center gap-3 mt-3 mb-4">
+        <span class="icono-tipo" th:classappend="'tipo-' + ${recurso.tipo}" style="width: 3.5rem; height: 3.5rem">
+            <svg th:replace="~{fragments/iconos :: tipo(${recurso.tipo}, 'icono-lg')}"></svg>
+        </span>
+        <div class="flex-grow-1">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <h1 class="h2 mb-0" th:text="${recurso.nombre}">Sala Andes</h1>
+                <span class="chip-tipo" th:classappend="'tipo-' + ${recurso.tipo}"
+                      th:text="${#messages.msg('tipo.' + recurso.tipo)}">Sala</span>
+            </div>
+            <p class="text-body-secondary mb-2"
+               th:text="${recurso.descripcion} ?: ${#messages.msg('descripcion.' + recurso.tipo)}">Descripción</p>
+            <div class="d-flex flex-wrap gap-3">
+                <span class="dato"><svg th:replace="~{fragments/iconos :: icono('usuarios', '')}"></svg>
+                    <span th:text="'Hasta ' + ${recurso.capacidad} + (${recurso.capacidad == 1} ? ' persona' : ' personas')">Hasta 8 personas</span></span>
+                <span class="dato"><svg th:replace="~{fragments/iconos :: icono('reloj', '')}"></svg>
+                    <span th:text="'Abierto de ' + ${#temporals.format(recurso.horaApertura, 'HH:mm')} + ' a '
+                        + ${#temporals.format(recurso.horaCierre, 'HH:mm')}">Abierto de 08:00 a 20:00</span></span>
+            </div>
         </div>
-        <ul class="list-unstyled small text-md-end mb-0">
-            <li>Capacidad: <strong th:text="${recurso.capacidad} + ' personas'">8</strong></li>
-            <li>Horario: <strong th:text="${#temporals.format(recurso.horaApertura, 'HH:mm')} + ' – '
-                    + ${#temporals.format(recurso.horaCierre, 'HH:mm')}">08:00 – 20:00</strong></li>
-        </ul>
     </div>
 
     <div class="row g-4">
         <!--/* Agenda del día */-->
         <section class="col-lg-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="tarjeta">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3 border-bottom">
                     <a class="btn btn-outline-secondary btn-sm"
                        th:classappend="${!fecha.isAfter(hoy)} ? 'disabled'"
                        th:href="@{/recursos/{id}(id=${recurso.id}, fecha=${fecha.minusDays(1)})}">&larr; Anterior</a>
@@ -39,8 +50,8 @@
                     <a class="btn btn-outline-secondary btn-sm"
                        th:href="@{/recursos/{id}(id=${recurso.id}, fecha=${fecha.plusDays(1)})}">Siguiente &rarr;</a>
                 </div>
-                <div class="card-body">
-                    <p class="fw-semibold text-capitalize mb-3"
+                <div class="p-3 p-md-4">
+                    <p class="fw-semibold capitalizar mb-3"
                        th:text="${#temporals.format(fecha, 'EEEE d ''de'' MMMM')}">lunes 16 de noviembre</p>
                     <div class="agenda" id="agenda">
                         <!--/* data-*: el JS lee los bloques para validar rangos contiguos en el navegador. */-->
@@ -65,13 +76,14 @@
 
         <!--/* Formulario de reserva */-->
         <aside class="col-lg-4">
-            <div class="card shadow-sm">
-                <div class="card-body">
+            <div class="tarjeta lateral-fijo">
+                <div class="p-3 p-md-4">
                     <h2 class="h5 mb-3">Reservar</h2>
 
                     <div sec:authorize="!isAuthenticated()">
-                        <p class="text-body-secondary small">Necesitas una cuenta para reservar.</p>
-                        <a class="btn btn-primary w-100" th:href="@{/login}">Entrar</a>
+                        <p class="text-body-secondary small">Necesitas una cuenta gratuita para reservar.</p>
+                        <a class="btn btn-primary w-100 mb-2" th:href="@{/login}">Entrar</a>
+                        <a class="btn btn-outline-secondary w-100" th:href="@{/registro}">Crear cuenta</a>
                     </div>
 
                     <form sec:authorize="isAuthenticated()" id="form-reserva" method="post"
@@ -102,9 +114,13 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="rounded-3 p-3 mb-3 small" style="background: var(--marca-suave)">
+                            <div class="text-body-secondary">Tu selección</div>
+                            <div class="fw-semibold" id="resumen-seleccion">Elige un horario en la agenda</div>
+                        </div>
                         <button type="submit" class="btn btn-primary w-100">Confirmar reserva</button>
                         <p class="form-text mt-2 mb-0">
-                            Puedes cancelar hasta 2 horas antes del inicio.
+                            Recibirás la confirmación por correo. Puedes cancelar hasta 2 horas antes del inicio.
                         </p>
                     </form>
                 </div>

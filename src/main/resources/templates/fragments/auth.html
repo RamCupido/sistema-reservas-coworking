@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/* Panel lateral de login y registro: recuerda al usuario qué gana con su cuenta. */-->
+<div th:fragment="panel" class="auth-panel col-lg-5 d-none d-lg-flex flex-column justify-content-between p-5">
+    <div>
+        <span class="marca-logo mb-4"><svg th:replace="~{fragments/iconos :: icono('calendario', '')}"></svg></span>
+        <h2 class="h3 mb-3">Tu espacio de trabajo, cuando lo necesitas</h2>
+        <p class="opacity-75 mb-4">Reserva salas, escritorios y oficinas en bloques de 30 minutos.</p>
+        <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
+            <li class="d-flex gap-2"><svg th:replace="~{fragments/iconos :: icono('check', '')}"></svg> Disponibilidad en tiempo real</li>
+            <li class="d-flex gap-2"><svg th:replace="~{fragments/iconos :: icono('check', '')}"></svg> Calendario con todas tus reservas</li>
+            <li class="d-flex gap-2"><svg th:replace="~{fragments/iconos :: icono('check', '')}"></svg> Confirmación y recordatorio por correo</li>
+            <li class="d-flex gap-2"><svg th:replace="~{fragments/iconos :: icono('check', '')}"></svg> Cancelación hasta 2 horas antes</li>
+        </ul>
+    </div>
+    <p class="small opacity-50 mb-0 mt-4">Coworking Reservas</p>
+</div>
+</body>
+</html>

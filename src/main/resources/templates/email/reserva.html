@@ -48,8 +48,8 @@
                             </tr>
                             <tr style="background:#f9fafb;">
                                 <td style="padding:10px 14px;color:#6b7280;">Fecha</td>
-                                <td style="padding:10px 14px;text-transform:capitalize;"
-                                    th:text="${#temporals.format(reserva.fechaInicio, 'EEEE d ''de'' MMMM ''de'' yyyy')}">miércoles 18 de noviembre de 2026</td>
+                                <td style="padding:10px 14px;"
+                                    th:text="${#strings.capitalize(#temporals.format(reserva.fechaInicio, 'EEEE d ''de'' MMMM ''de'' yyyy'))}">miércoles 18 de noviembre de 2026</td>
                             </tr>
                             <tr>
                                 <td style="padding:10px 14px;color:#6b7280;">Horario</td>

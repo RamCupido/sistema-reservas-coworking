@@ -1,54 +1,259 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Espacios')}"></head>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Reserva tu espacio de trabajo')}"></head>
 <body>
-<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<nav th:replace="~{fragments/layout :: navbar('espacios')}"></nav>
 
-<main class="container">
-    <div th:replace="~{fragments/layout :: alertas}"></div>
-    <div th:if="${param.logout}" class="alert alert-info">Has cerrado sesión.</div>
+<main>
+    <!--/* ===================== Visitante: presentación del servicio ===================== */-->
+    <th:block sec:authorize="!isAuthenticated()">
+        <section class="hero">
+            <div class="container">
+                <div th:if="${param.logout}" class="alert alert-info">Has cerrado sesión. ¡Hasta pronto!</div>
+                <div class="row align-items-center g-5">
+                    <div class="col-lg-6">
+                        <span class="etiqueta-superior mb-3">
+                            <svg th:replace="~{fragments/iconos :: icono('check', '')}"></svg>
+                            Coworking y salas de reuniones
+                        </span>
+                        <h1 class="mb-3">Reserva tu espacio de trabajo <span class="texto-degradado">en segundos</span></h1>
+                        <p class="lead mb-4">
+                            Salas de reuniones, escritorios, oficinas privadas y auditorio. Consulta qué horarios
+                            están libres, reserva en bloques de 30 minutos y recibe la confirmación y un
+                            recordatorio en tu correo.
+                        </p>
+                        <div class="d-flex flex-wrap gap-2 mb-4">
+                            <a class="btn btn-primary btn-lg d-inline-flex align-items-center gap-2" th:href="@{/registro}">
+                                Crear cuenta gratis <svg th:replace="~{fragments/iconos :: icono('flecha', '')}"></svg>
+                            </a>
+                            <a class="btn btn-outline-secondary btn-lg" href="#espacios">Ver espacios</a>
+                        </div>
+                        <dl class="cifras d-flex flex-wrap gap-4 mb-0">
+                            <div><dt>4</dt><dd>tipos de espacio</dd></div>
+                            <div><dt>30 min</dt><dd>por bloque de reserva</dd></div>
+                            <div><dt>0</dt><dd>reservas duplicadas</dd></div>
+                        </dl>
+                    </div>
+                    <div class="col-lg-6 d-none d-md-block">
+                        <!--/* Maqueta decorativa: muestra cómo se ve la agenda (no son datos reales). */-->
+                        <div class="maqueta mx-auto" style="max-width: 30rem" aria-hidden="true">
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                <span class="icono-tipo tipo-SALA_REUNIONES">
+                                    <svg th:replace="~{fragments/iconos :: icono('usuarios', 'icono-lg')}"></svg>
+                                </span>
+                                <div>
+                                    <div class="fw-semibold">Sala de reuniones</div>
+                                    <div class="small text-body-secondary">Hoy · 8 personas · 08:00 – 20:00</div>
+                                </div>
+                            </div>
+                            <div class="row row-cols-4 g-2 mb-3">
+                                <div class="col"><div class="bloque-demo ocupado">09:00</div></div>
+                                <div class="col"><div class="bloque-demo ocupado">09:30</div></div>
+                                <div class="col"><div class="bloque-demo">10:00</div></div>
+                                <div class="col"><div class="bloque-demo elegido">10:30</div></div>
+                                <div class="col"><div class="bloque-demo elegido">11:00</div></div>
+                                <div class="col"><div class="bloque-demo">11:30</div></div>
+                                <div class="col"><div class="bloque-demo ocupado">12:00</div></div>
+                                <div class="col"><div class="bloque-demo">12:30</div></div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center border-top pt-3">
+                                <span class="small text-body-secondary">Tu selección: <strong class="text-body">10:30 – 11:30</strong></span>
+                                <span class="btn btn-primary btn-sm">Confirmar reserva</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
-        <div>
-            <h1 class="h3 mb-1">Espacios disponibles</h1>
-            <p class="text-body-secondary mb-0">Elige un espacio y consulta su agenda en bloques de 30 minutos.</p>
-        </div>
-        <div class="d-flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo">
-            <a class="btn btn-sm" th:href="@{/}"
-               th:classappend="${tipoSeleccionado == null} ? 'btn-primary' : 'btn-outline-primary'">Todos</a>
-            <a th:each="t : ${tipos}" class="btn btn-sm" th:href="@{/(tipo=${t})}"
-               th:classappend="${tipoSeleccionado == t} ? 'btn-primary' : 'btn-outline-primary'"
-               th:text="${#messages.msg('tipo.' + t)}">Tipo</a>
-        </div>
-    </div>
+        <section class="seccion">
+            <div class="container">
+                <div class="seccion-titulo">
+                    <h2 class="h1">Cómo funciona</h2>
+                    <p class="fs-5">Tres pasos, sin llamadas ni correos de ida y vuelta.</p>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="tarjeta h-100 p-4">
+                            <span class="paso-numero mb-3">1</span>
+                            <h3 class="h5">Elige un espacio</h3>
+                            <p class="text-body-secondary mb-0">Explora el catálogo y filtra por tipo: sala, escritorio, oficina o auditorio.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="tarjeta h-100 p-4">
+                            <span class="paso-numero mb-3">2</span>
+                            <h3 class="h5">Escoge tu horario</h3>
+                            <p class="text-body-secondary mb-0">La agenda muestra en verde los bloques libres. Selecciona el inicio y el final.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="tarjeta h-100 p-4">
+                            <span class="paso-numero mb-3">3</span>
+                            <h3 class="h5">Listo, es tuyo</h3>
+                            <p class="text-body-secondary mb-0">La reserva queda confirmada al instante y la ves en tu calendario personal.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    <div th:if="${pagina.content.isEmpty()}" class="text-center text-body-secondary py-5">
-        No hay espacios de este tipo por ahora.
-    </div>
+        <section class="seccion bg-white border-top border-bottom">
+            <div class="container">
+                <div class="seccion-titulo">
+                    <h2 class="h1">Todo lo que necesitas para organizarte</h2>
+                    <p class="fs-5">Pensado para equipos que comparten espacios cada día.</p>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-6 col-lg-4" th:each="f : ${ {
+                            {'calendario', 'Disponibilidad en tiempo real', 'Ves al momento qué horarios están libres, día a día.'},
+                            {'escudo', 'Sin reservas duplicadas', 'Aunque dos personas reserven a la vez, el horario solo puede ser de una.'},
+                            {'correo', 'Confirmación y recordatorio', 'Te avisamos por correo al reservar y 24 horas antes.'},
+                            {'deshacer', 'Cancelación flexible', 'Cancela tú mismo hasta 2 horas antes del inicio.'},
+                            {'reloj', 'Bloques de 30 minutos', 'Reserva solo el tiempo que necesitas, dentro del horario de cada espacio.'},
+                            {'codigo', 'API abierta', 'Integra las reservas en tus propias herramientas con la API REST.'}
+                        } }">
+                        <div class="d-flex gap-3">
+                            <span class="icono-tipo flex-shrink-0">
+                                <svg th:replace="~{fragments/iconos :: icono(${f[0]}, 'icono-lg')}"></svg>
+                            </span>
+                            <div>
+                                <h3 class="h6 fw-semibold mb-1" th:text="${f[1]}">Característica</h3>
+                                <p class="text-body-secondary small mb-0" th:text="${f[2]}">Descripción</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-        <div class="col" th:each="r : ${pagina.content}">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body d-flex flex-column">
-                    <span class="badge text-bg-light border align-self-start mb-2"
-                          th:text="${#messages.msg('tipo.' + r.tipo)}">Sala</span>
-                    <h2 class="h5 card-title" th:text="${r.nombre}">Sala Andes</h2>
-                    <p class="card-text text-body-secondary small flex-grow-1"
-                       th:text="${r.descripcion} ?: 'Sin descripción'">Descripción</p>
-                    <ul class="list-unstyled small mb-3">
-                        <li>Capacidad: <strong th:text="${r.capacidad} + ' personas'">8</strong></li>
-                        <li>Horario: <strong th:text="${#temporals.format(r.horaApertura, 'HH:mm')} + ' – '
-                                + ${#temporals.format(r.horaCierre, 'HH:mm')}">08:00 – 20:00</strong></li>
-                    </ul>
-                    <div class="d-flex justify-content-end">
-                        <a class="btn btn-primary btn-sm" th:href="@{/recursos/{id}(id=${r.id})}">Ver agenda</a>
+        <section class="seccion">
+            <div class="container">
+                <div class="seccion-titulo">
+                    <h2 class="h1">Un espacio para cada momento</h2>
+                    <p class="fs-5">Desde una hora de concentración hasta una presentación para cien personas.</p>
+                </div>
+                <div class="row g-3">
+                    <div class="col-sm-6 col-lg-3" th:each="t : ${tipos}">
+                        <a class="tarjeta tarjeta-hover d-block h-100 p-4 text-decoration-none text-body"
+                           th:href="@{/(tipo=${t})} + '#espacios'">
+                            <span class="icono-tipo mb-3" th:classappend="'tipo-' + ${t}">
+                                <svg th:replace="~{fragments/iconos :: tipo(${t}, 'icono-lg')}"></svg>
+                            </span>
+                            <h3 class="h6 fw-semibold" th:text="${#messages.msg('tipo.' + t)}">Sala</h3>
+                            <p class="small text-body-secondary mb-0" th:text="${#messages.msg('descripcion.' + t)}">Descripción</p>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </th:block>
+
+    <!--/* ===================== Usuario con sesión: saludo y próxima reserva ===================== */-->
+    <section class="pt-4" sec:authorize="isAuthenticated()">
+        <div class="container">
+            <div th:replace="~{fragments/layout :: alertas}"></div>
+            <div class="row g-4 align-items-stretch mb-2">
+                <div class="col-lg-7 d-flex flex-column justify-content-center">
+                    <h1 class="h2 mb-1" th:text="${nombreUsuario != null} ? 'Hola, ' + ${nombreUsuario} : 'Hola'">Hola, Ana</h1>
+                    <p class="text-body-secondary mb-0">¿Qué espacio necesitas hoy?</p>
+                </div>
+                <div class="col-lg-5">
+                    <div class="tarjeta proxima p-3 h-100" th:if="${proxima != null}">
+                        <div class="small text-body-secondary mb-2">Tu próxima reserva</div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="fecha-bloque">
+                                <div class="dia" th:text="${#temporals.format(proxima.fechaInicio, 'd')}">24</div>
+                                <div class="mes" th:text="${#temporals.format(proxima.fechaInicio, 'MMM')}">nov</div>
+                            </div>
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="fw-semibold text-truncate" th:text="${proxima.recurso.nombre}">Sala Andes</div>
+                                <div class="small text-body-secondary"
+                                     th:text="${#temporals.format(proxima.fechaInicio, 'EEEE')} + ' · '
+                                        + ${#temporals.format(proxima.fechaInicio, 'HH:mm')} + ' – '
+                                        + ${#temporals.format(proxima.fechaFin, 'HH:mm')}">lunes · 10:00 – 11:00</div>
+                            </div>
+                            <a class="btn btn-outline-primary btn-sm"
+                               th:href="@{/mis-reservas(mes=${#temporals.format(proxima.fechaInicio, 'yyyy-MM')})}">Ver</a>
+                        </div>
+                    </div>
+                    <div class="tarjeta p-3 h-100 d-flex align-items-center gap-3" th:if="${proxima == null}">
+                        <span class="icono-tipo"><svg th:replace="~{fragments/iconos :: icono('calendario', 'icono-lg')}"></svg></span>
+                        <div class="small text-body-secondary">No tienes reservas próximas. Elige un espacio y reserva tu horario.</div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <nav th:replace="~{fragments/layout :: paginacion(${pagina}, ${urlPagina})}"></nav>
+    <!--/* ===================== Catálogo (para todos) ===================== */-->
+    <section id="espacios" class="seccion pt-5" style="scroll-margin-top: 4rem">
+        <div class="container">
+            <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 cabecera-pagina">
+                <div>
+                    <h2 class="h3 mb-1">Espacios disponibles</h2>
+                    <p>Elige un espacio para ver su agenda y reservar.</p>
+                </div>
+                <div class="filtros d-flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo">
+                    <a class="btn btn-sm" th:href="@{/} + '#espacios'"
+                       th:classappend="${tipoSeleccionado == null} ? 'btn-primary' : 'btn-outline-secondary'">Todos</a>
+                    <a th:each="t : ${tipos}" class="btn btn-sm" th:href="@{/(tipo=${t})} + '#espacios'"
+                       th:classappend="${tipoSeleccionado == t} ? 'btn-primary' : 'btn-outline-secondary'"
+                       th:text="${#messages.msg('tipo.' + t)}">Tipo</a>
+                </div>
+            </div>
+
+            <div th:if="${pagina.content.isEmpty()}" class="tarjeta text-center text-body-secondary py-5">
+                <svg th:replace="~{fragments/iconos :: icono('buscar', 'icono-lg mb-2')}"></svg>
+                <p class="mb-0">No hay espacios de este tipo por ahora.</p>
+            </div>
+
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                <div class="col" th:each="r : ${pagina.content}">
+                    <a class="tarjeta tarjeta-hover d-flex flex-column h-100 p-4 text-decoration-none text-body"
+                       th:href="@{/recursos/{id}(id=${r.id})}">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <span class="icono-tipo" th:classappend="'tipo-' + ${r.tipo}">
+                                <svg th:replace="~{fragments/iconos :: tipo(${r.tipo}, 'icono-lg')}"></svg>
+                            </span>
+                            <span class="chip-tipo" th:classappend="'tipo-' + ${r.tipo}"
+                                  th:text="${#messages.msg('tipo.' + r.tipo)}">Sala</span>
+                        </div>
+                        <h3 class="h5 mb-2" th:text="${r.nombre}">Sala Andes</h3>
+                        <p class="text-body-secondary small flex-grow-1"
+                           th:text="${r.descripcion} ?: ${#messages.msg('descripcion.' + r.tipo)}">Descripción</p>
+                        <div class="d-flex flex-wrap gap-3 pt-3 border-top">
+                            <span class="dato">
+                                <svg th:replace="~{fragments/iconos :: icono('usuarios', '')}"></svg>
+                                <span th:text="${r.capacidad} + (${r.capacidad == 1} ? ' persona' : ' personas')">8 personas</span>
+                            </span>
+                            <span class="dato">
+                                <svg th:replace="~{fragments/iconos :: icono('reloj', '')}"></svg>
+                                <span th:text="${#temporals.format(r.horaApertura, 'HH:mm')} + ' – ' + ${#temporals.format(r.horaCierre, 'HH:mm')}">08:00 – 20:00</span>
+                            </span>
+                            <span class="ms-auto fw-semibold text-primary small d-inline-flex align-items-center gap-1">
+                                Ver agenda <svg th:replace="~{fragments/iconos :: icono('flecha', '')}"></svg>
+                            </span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <nav th:replace="~{fragments/layout :: paginacion(${pagina}, ${urlPagina})}"></nav>
+        </div>
+    </section>
+
+    <!--/* Llamada final, solo para visitantes */-->
+    <section class="pb-5" sec:authorize="!isAuthenticated()">
+        <div class="container">
+            <div class="banda-cta text-center">
+                <h2 class="h2 mb-2">¿Listo para tu próxima reunión?</h2>
+                <p class="mb-4 opacity-75">Crea tu cuenta en menos de un minuto y reserva tu primer espacio.</p>
+                <a class="btn btn-light btn-lg" th:href="@{/registro}">Crear cuenta gratis</a>
+            </div>
+        </div>
+    </section>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>

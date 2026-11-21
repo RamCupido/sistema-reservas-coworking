@@ -2,60 +2,183 @@
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Mis reservas')}"></head>
 <body>
-<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<nav th:replace="~{fragments/layout :: navbar('mis-reservas')}"></nav>
 
-<main class="container">
+<main class="container pt-4">
     <div th:replace="~{fragments/layout :: alertas}"></div>
 
-    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
-        <h1 class="h3 mb-0">Mis reservas</h1>
-        <div class="d-flex flex-wrap gap-2" role="group" aria-label="Filtrar por estado">
-            <a class="btn btn-sm" th:href="@{/mis-reservas}"
-               th:classappend="${estadoSeleccionado == null} ? 'btn-primary' : 'btn-outline-primary'">Todas</a>
-            <a th:each="e : ${estados}" class="btn btn-sm" th:href="@{/mis-reservas(estado=${e})}"
-               th:classappend="${estadoSeleccionado == e} ? 'btn-primary' : 'btn-outline-primary'"
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 cabecera-pagina">
+        <div>
+            <h1 class="h2 mb-1">Mis reservas</h1>
+            <p>Tu calendario de espacios reservados. Puedes cancelar hasta 2 horas antes del inicio.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <!--/* Pestañas: misma página, dos vistas (?vista=calendario | lista) */-->
+            <div class="btn-group" role="group" aria-label="Vista">
+                <a class="btn btn-sm d-inline-flex align-items-center gap-1" th:href="@{/mis-reservas}"
+                   th:classappend="${vista == 'calendario'} ? 'btn-primary' : 'btn-outline-secondary'">
+                    <svg th:replace="~{fragments/iconos :: icono('calendario', '')}"></svg> Calendario
+                </a>
+                <a class="btn btn-sm d-inline-flex align-items-center gap-1" th:href="@{/mis-reservas(vista='lista')}"
+                   th:classappend="${vista == 'lista'} ? 'btn-primary' : 'btn-outline-secondary'">
+                    <svg th:replace="~{fragments/iconos :: icono('lista', '')}"></svg> Lista
+                </a>
+            </div>
+            <a class="btn btn-sm btn-outline-primary" th:href="@{/} + '#espacios'">Nueva reserva</a>
+        </div>
+    </div>
+
+    <!--/* Próxima reserva destacada */-->
+    <div class="tarjeta proxima p-3 mb-4 d-flex flex-wrap align-items-center gap-3" th:if="${proxima != null}">
+        <div class="fecha-bloque">
+            <div class="dia" th:text="${#temporals.format(proxima.fechaInicio, 'd')}">24</div>
+            <div class="mes" th:text="${#temporals.format(proxima.fechaInicio, 'MMM')}">nov</div>
+        </div>
+        <div class="flex-grow-1">
+            <div class="small text-body-secondary">Tu próxima reserva</div>
+            <div class="fw-semibold">
+                <a class="text-body text-decoration-none" th:href="@{/recursos/{id}(id=${proxima.recurso.id})}"
+                   th:text="${proxima.recurso.nombre}">Sala Andes</a>
+            </div>
+            <div class="small text-body-secondary capitalizar"
+                 th:text="${#temporals.format(proxima.fechaInicio, 'EEEE d ''de'' MMMM')} + ' · '
+                    + ${#temporals.format(proxima.fechaInicio, 'HH:mm')} + ' – ' + ${#temporals.format(proxima.fechaFin, 'HH:mm')}">lunes 24 de noviembre · 10:00 – 11:00</div>
+        </div>
+    </div>
+
+    <!--/* ============================ Vista calendario ============================ */-->
+    <th:block th:if="${vista == 'calendario'}" th:with="mes=${calendario.mes}">
+        <div class="tarjeta overflow-hidden mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3">
+                <h2 class="h5 mb-0 capitalizar" th:text="${#temporals.format(mes.atDay(1), 'MMMM yyyy')}">noviembre 2026</h2>
+                <div class="d-flex align-items-center gap-2">
+                    <a class="btn btn-sm btn-outline-secondary" th:unless="${esMesActual}" th:href="@{/mis-reservas}">Hoy</a>
+                    <div class="btn-group">
+                        <a class="btn btn-sm btn-outline-secondary" th:href="@{/mis-reservas(mes=${mesAnterior})}"
+                           aria-label="Mes anterior"><svg th:replace="~{fragments/iconos :: icono('izquierda', '')}"></svg></a>
+                        <a class="btn btn-sm btn-outline-secondary" th:href="@{/mis-reservas(mes=${mesSiguiente})}"
+                           aria-label="Mes siguiente"><svg th:replace="~{fragments/iconos :: icono('derecha', '')}"></svg></a>
+                    </div>
+                </div>
+            </div>
+            <div class="calendario" role="grid" th:attr="aria-label=${#temporals.format(mes.atDay(1), 'MMMM yyyy')}">
+                <div class="dia-semana" th:each="n : ${ {'Lun','Mar','Mié','Jue','Vie','Sáb','Dom'} }" th:text="${n}">Lun</div>
+                <th:block th:each="semana : ${calendario.semanas}">
+                    <div class="celda" th:each="d : ${semana.dias}"
+                         th:classappend="${(d.delMes ? '' : 'fuera-mes ') + (d.hoy ? 'hoy ' : '') + (d.pasado ? 'pasado' : '')}">
+                        <!--/* El número enlaza a la agenda de ese día (ancla), solo si tiene reservas */-->
+                        <a class="numero" th:if="${d.tieneReservas() and d.delMes}"
+                           th:href="'#dia-' + ${d.fecha}" th:text="${d.fecha.dayOfMonth}">24</a>
+                        <span class="numero" th:unless="${d.tieneReservas() and d.delMes}" th:text="${d.fecha.dayOfMonth}">1</span>
+                        <div class="eventos">
+                            <a class="evento" th:each="r : ${d.reservas}"
+                               th:classappend="${r.estado.name()} + (${r.id == reservaNueva} ? ' nueva' : '')"
+                               th:href="'#dia-' + ${d.fecha}"
+                               th:title="${#temporals.format(r.fechaInicio, 'HH:mm')} + '–' + ${#temporals.format(r.fechaFin, 'HH:mm')} + ' · ' + ${r.recurso.nombre} + ' (' + ${#messages.msg('estado.' + r.estado)} + ')'"
+                               th:text="${#temporals.format(r.fechaInicio, 'HH:mm')} + ' ' + ${r.recurso.nombre}">10:00 Sala Andes</a>
+                        </div>
+                    </div>
+                </th:block>
+            </div>
+            <div class="d-flex flex-wrap gap-3 small text-body-secondary p-3 border-top">
+                <span><span class="leyenda" style="background: var(--marca)"></span> Confirmada</span>
+                <span><span class="leyenda" style="background: #0d9488"></span> Completada</span>
+                <span><span class="leyenda" style="background: #d1d5db"></span> Cancelada</span>
+            </div>
+        </div>
+
+        <!--/* Agenda del mes: el detalle y las acciones de cada reserva */-->
+        <h2 class="h5 mb-3">
+            Agenda de <span th:text="${#temporals.format(mes.atDay(1), 'MMMM')}">noviembre</span>
+            <span class="badge text-bg-light border ms-1" th:text="${calendario.totalReservasDelMes()}">3</span>
+        </h2>
+
+        <div class="tarjeta text-center text-body-secondary py-5 px-3" th:if="${calendario.diasConReservas().isEmpty()}">
+            <svg th:replace="~{fragments/iconos :: icono('calendario', 'icono-lg mb-2')}"></svg>
+            <p class="mb-3">No tienes reservas este mes.</p>
+            <a class="btn btn-primary" th:href="@{/} + '#espacios'">Buscar un espacio</a>
+        </div>
+
+        <div class="d-flex flex-column gap-3">
+            <section class="tarjeta agenda-dia p-3" th:each="d : ${calendario.diasConReservas()}"
+                     th:id="'dia-' + ${d.fecha}">
+                <div class="d-flex gap-3">
+                    <div class="fecha-bloque align-self-start">
+                        <div class="dia" th:text="${d.fecha.dayOfMonth}">24</div>
+                        <div class="mes" th:text="${#temporals.format(d.fecha, 'EEE')}">lun</div>
+                    </div>
+                    <ul class="list-unstyled flex-grow-1 mb-0 d-flex flex-column gap-2">
+                        <li class="d-flex flex-wrap align-items-center gap-2" th:each="r : ${d.reservas}">
+                            <span class="fw-semibold font-monospace small"
+                                  th:text="${#temporals.format(r.fechaInicio, 'HH:mm')} + '–' + ${#temporals.format(r.fechaFin, 'HH:mm')}">10:00–11:00</span>
+                            <a class="text-body fw-medium text-decoration-none" th:href="@{/recursos/{id}(id=${r.recurso.id}, fecha=${d.fecha})}"
+                               th:text="${r.recurso.nombre}">Sala Andes</a>
+                            <span th:replace="~{fragments/estado :: badge(${r.estado})}"></span>
+                            <span class="badge text-bg-primary" th:if="${r.id == reservaNueva}">Nueva</span>
+                            <form th:if="${cancelables.contains(r.id)}" method="post" class="ms-auto m-0"
+                                  th:action="@{/mis-reservas/{id}/cancelar(id=${r.id})}"
+                                  onsubmit="return confirm('¿Cancelar esta reserva?')">
+                                <input type="hidden" name="mes" th:value="${mes}">
+                                <button type="submit" class="btn btn-outline-danger btn-sm">Cancelar</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+    </th:block>
+
+    <!--/* ============================ Vista lista ============================ */-->
+    <th:block th:if="${vista == 'lista'}">
+        <div class="filtros d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Filtrar por estado">
+            <a class="btn btn-sm" th:href="@{/mis-reservas(vista='lista')}"
+               th:classappend="${estadoSeleccionado == null} ? 'btn-primary' : 'btn-outline-secondary'">Todas</a>
+            <a th:each="e : ${estados}" class="btn btn-sm" th:href="@{/mis-reservas(vista='lista', estado=${e})}"
+               th:classappend="${estadoSeleccionado == e} ? 'btn-primary' : 'btn-outline-secondary'"
                th:text="${#messages.msg('estado.' + e)}">Estado</a>
         </div>
-    </div>
 
-    <div th:if="${pagina.content.isEmpty()}" class="card card-body text-center text-body-secondary py-5">
-        <p class="mb-3">Todavía no tienes reservas aquí.</p>
-        <div><a class="btn btn-primary" th:href="@{/}">Buscar un espacio</a></div>
-    </div>
-
-    <div class="card shadow-sm" th:unless="${pagina.content.isEmpty()}">
-        <div class="table-responsive">
-            <table class="table align-middle mb-0">
-                <thead class="table-light">
-                <tr>
-                    <th>Espacio</th>
-                    <th>Fecha</th>
-                    <th>Horario</th>
-                    <th>Estado</th>
-                    <th></th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="r : ${pagina.content}">
-                    <td><a th:href="@{/recursos/{id}(id=${r.recurso.id})}" th:text="${r.recurso.nombre}">Sala</a></td>
-                    <td th:text="${#temporals.format(r.fechaInicio, 'dd/MM/yyyy')}">20/11/2026</td>
-                    <td th:text="${#temporals.format(r.fechaInicio, 'HH:mm')} + ' – ' + ${#temporals.format(r.fechaFin, 'HH:mm')}">10:00 – 11:00</td>
-                    <td><span th:replace="~{fragments/estado :: badge(${r.estado})}"></span></td>
-                    <td class="text-end">
-                        <form th:if="${cancelables.contains(r.id)}" method="post" class="m-0"
-                              th:action="@{/mis-reservas/{id}/cancelar(id=${r.id})}"
-                              onsubmit="return confirm('¿Cancelar esta reserva?')">
-                            <button type="submit" class="btn btn-outline-danger btn-sm">Cancelar</button>
-                        </form>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
+        <div th:if="${pagina.content.isEmpty()}" class="tarjeta text-center text-body-secondary py-5">
+            <p class="mb-3">Todavía no tienes reservas aquí.</p>
+            <a class="btn btn-primary" th:href="@{/} + '#espacios'">Buscar un espacio</a>
         </div>
-    </div>
-    <p class="form-text">Las reservas se pueden cancelar hasta 2 horas antes del inicio.</p>
 
-    <nav th:replace="~{fragments/layout :: paginacion(${pagina}, ${urlPagina})}"></nav>
+        <div class="tarjeta overflow-hidden" th:unless="${pagina.content.isEmpty()}">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                    <tr>
+                        <th>Espacio</th>
+                        <th>Fecha</th>
+                        <th>Horario</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="r : ${pagina.content}">
+                        <td><a class="fw-medium" th:href="@{/recursos/{id}(id=${r.recurso.id})}" th:text="${r.recurso.nombre}">Sala</a></td>
+                        <td th:text="${#temporals.format(r.fechaInicio, 'dd/MM/yyyy')}">20/11/2026</td>
+                        <td th:text="${#temporals.format(r.fechaInicio, 'HH:mm')} + ' – ' + ${#temporals.format(r.fechaFin, 'HH:mm')}">10:00 – 11:00</td>
+                        <td><span th:replace="~{fragments/estado :: badge(${r.estado})}"></span></td>
+                        <td class="text-end">
+                            <form th:if="${cancelables.contains(r.id)}" method="post" class="m-0"
+                                  th:action="@{/mis-reservas/{id}/cancelar(id=${r.id})}"
+                                  onsubmit="return confirm('¿Cancelar esta reserva?')">
+                                <input type="hidden" name="vista" value="lista">
+                                <input type="hidden" name="estado" th:value="${estadoSeleccionado}" th:if="${estadoSeleccionado != null}">
+                                <input type="hidden" name="page" th:value="${pagina.page}">
+                                <button type="submit" class="btn btn-outline-danger btn-sm">Cancelar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <nav th:replace="~{fragments/layout :: paginacion(${pagina}, ${urlPagina})}"></nav>
+    </th:block>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>

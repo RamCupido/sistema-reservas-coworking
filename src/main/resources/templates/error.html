@@ -7,7 +7,7 @@
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Error')}"></head>
 <body>
-<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<nav th:replace="~{fragments/layout :: navbar('')}"></nav>
 <main class="container text-center py-5">
     <p class="display-4 fw-semibold text-body-secondary" th:text="${status}">500</p>
     <h1 class="h3" th:text="${titulo} ?: 'Algo salió mal'">Algo salió mal</h1>

@@ -13,6 +13,7 @@
     const bloques = Array.from(document.querySelectorAll('#agenda .bloque'));
     const selInicio = document.getElementById('horaInicio');
     const selFin = document.getElementById('horaFin');
+    const resumen = document.getElementById('resumen-seleccion');
 
     const minutos = (hhmm) => {
         const [h, m] = hhmm.split(':').map(Number);
@@ -48,6 +49,17 @@
                 && minutos(b.dataset.inicio) >= minutos(inicio) && minutos(b.dataset.fin) <= minutos(fin);
             b.classList.toggle('seleccionado', Boolean(dentro));
         });
+
+        resumen.textContent = inicio && fin
+            ? `${inicio} – ${fin} · ${duracion(minutos(fin) - minutos(inicio))}`
+            : 'Elige un horario en la agenda';
+    }
+
+    /** 90 → "1 h 30 min" */
+    function duracion(total) {
+        const h = Math.floor(total / 60);
+        const m = total % 60;
+        return [h ? `${h} h` : '', m ? `${m} min` : ''].filter(Boolean).join(' ');
     }
 
     // Clic en la agenda: el primero marca el inicio; el segundo (si es posterior y contiguo) el final.
