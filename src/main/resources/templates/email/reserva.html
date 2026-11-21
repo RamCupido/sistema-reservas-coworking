@@ -57,10 +57,6 @@
                                     th:text="${#temporals.format(reserva.fechaInicio, 'HH:mm')} + ' – ' + ${#temporals.format(reserva.fechaFin, 'HH:mm')}">10:00 – 11:30</td>
                             </tr>
                             <tr style="background:#f9fafb;">
-                                <td style="padding:10px 14px;color:#6b7280;">Total</td>
-                                <td style="padding:10px 14px;">$<span th:text="${#numbers.formatDecimal(reserva.precioTotal, 1, 2, 'POINT')}">37.50</span></td>
-                            </tr>
-                            <tr>
                                 <td style="padding:10px 14px;color:#6b7280;">N.º de reserva</td>
                                 <td style="padding:10px 14px;" th:text="'#' + ${reserva.id}">#12</td>
                             </tr>

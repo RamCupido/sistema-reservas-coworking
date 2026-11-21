@@ -40,11 +40,7 @@
                         <li>Horario: <strong th:text="${#temporals.format(r.horaApertura, 'HH:mm')} + ' – '
                                 + ${#temporals.format(r.horaCierre, 'HH:mm')}">08:00 – 20:00</strong></li>
                     </ul>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="fs-5 fw-semibold">
-                            $<span th:text="${#numbers.formatDecimal(r.precioPorHora, 1, 2, 'POINT')}">25.00</span>
-                            <small class="text-body-secondary fw-normal">/hora</small>
-                        </span>
+                    <div class="d-flex justify-content-end">
                         <a class="btn btn-primary btn-sm" th:href="@{/recursos/{id}(id=${r.id})}">Ver agenda</a>
                     </div>
                 </div>

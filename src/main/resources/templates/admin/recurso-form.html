@@ -38,13 +38,6 @@
                      th:text="${#fields.errors('capacidad')[0]}">Error</div>
             </div>
             <div class="col-md-6">
-                <label for="precioPorHora" class="form-label">Precio por hora ($)</label>
-                <input type="number" min="0" step="0.01" th:field="*{precioPorHora}" class="form-control"
-                       th:errorclass="is-invalid">
-                <div class="invalid-feedback" th:if="${#fields.hasErrors('precioPorHora')}"
-                     th:text="${#fields.errors('precioPorHora')[0]}">Error</div>
-            </div>
-            <div class="col-md-6">
                 <label for="horaApertura" class="form-label">Apertura</label>
                 <!--/* step=1800 s: el selector de hora avanza de media en media hora. */-->
                 <input type="time" step="1800" th:field="*{horaApertura}" class="form-control"

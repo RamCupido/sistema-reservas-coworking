@@ -20,7 +20,6 @@
                     <th>Nombre</th>
                     <th>Tipo</th>
                     <th class="text-end">Capacidad</th>
-                    <th class="text-end">Precio/hora</th>
                     <th>Horario</th>
                     <th>Estado</th>
                     <th></th>
@@ -31,7 +30,6 @@
                     <td th:text="${r.nombre}">Sala Andes</td>
                     <td th:text="${#messages.msg('tipo.' + r.tipo)}">Sala</td>
                     <td class="text-end" th:text="${r.capacidad}">8</td>
-                    <td class="text-end">$<span th:text="${#numbers.formatDecimal(r.precioPorHora, 1, 2, 'POINT')}">25.00</span></td>
                     <td th:text="${#temporals.format(r.horaApertura, 'HH:mm')} + ' – ' + ${#temporals.format(r.horaCierre, 'HH:mm')}">08:00 – 20:00</td>
                     <td>
                         <span th:if="${r.activo}" class="badge text-bg-success">Activo</span>
@@ -48,7 +46,7 @@
                     </td>
                 </tr>
                 <tr th:if="${pagina.content.isEmpty()}">
-                    <td colspan="7" class="text-center text-body-secondary py-4">Aún no hay recursos.</td>
+                    <td colspan="6" class="text-center text-body-secondary py-4">Aún no hay recursos.</td>
                 </tr>
                 </tbody>
             </table>

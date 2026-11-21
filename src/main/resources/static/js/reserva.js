@@ -1,6 +1,6 @@
 /*
  * Selección de horario en la agenda. Es solo una ayuda de usabilidad: el servidor vuelve a
- * validar todo (horario, bloques, solapamiento, precio), así que no hay reglas "de verdad" aquí.
+ * validar todo (horario, bloques de 30 min, solapamiento), así que no hay reglas "de verdad" aquí.
  */
 (function () {
     'use strict';
@@ -13,8 +13,6 @@
     const bloques = Array.from(document.querySelectorAll('#agenda .bloque'));
     const selInicio = document.getElementById('horaInicio');
     const selFin = document.getElementById('horaFin');
-    const total = document.getElementById('total-estimado');
-    const precioHora = parseFloat(form.dataset.precioHora);
 
     const minutos = (hhmm) => {
         const [h, m] = hhmm.split(':').map(Number);
@@ -50,10 +48,6 @@
                 && minutos(b.dataset.inicio) >= minutos(inicio) && minutos(b.dataset.fin) <= minutos(fin);
             b.classList.toggle('seleccionado', Boolean(dentro));
         });
-
-        total.textContent = inicio && fin
-            ? '$' + ((minutos(fin) - minutos(inicio)) / 60 * precioHora).toFixed(2)
-            : '—';
     }
 
     // Clic en la agenda: el primero marca el inicio; el segundo (si es posterior y contiguo) el final.

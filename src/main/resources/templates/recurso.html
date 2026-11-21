@@ -19,7 +19,6 @@
             <li>Capacidad: <strong th:text="${recurso.capacidad} + ' personas'">8</strong></li>
             <li>Horario: <strong th:text="${#temporals.format(recurso.horaApertura, 'HH:mm')} + ' – '
                     + ${#temporals.format(recurso.horaCierre, 'HH:mm')}">08:00 – 20:00</strong></li>
-            <li>Precio: <strong>$<span th:text="${#numbers.formatDecimal(recurso.precioPorHora, 1, 2, 'POINT')}">25.00</span>/hora</strong></li>
         </ul>
     </div>
 
@@ -76,8 +75,7 @@
                     </div>
 
                     <form sec:authorize="isAuthenticated()" id="form-reserva" method="post"
-                          th:action="@{/reservas}" th:object="${reserva}"
-                          th:attr="data-precio-hora=${recurso.precioPorHora}">
+                          th:action="@{/reservas}" th:object="${reserva}">
                         <input type="hidden" th:field="*{recursoId}">
                         <input type="hidden" th:field="*{fecha}">
 
@@ -104,13 +102,9 @@
                                 </select>
                             </div>
                         </div>
-                        <p class="d-flex justify-content-between mb-3">
-                            <span>Total estimado</span>
-                            <strong id="total-estimado">—</strong>
-                        </p>
                         <button type="submit" class="btn btn-primary w-100">Confirmar reserva</button>
                         <p class="form-text mt-2 mb-0">
-                            El precio final lo calcula el servidor. Puedes cancelar hasta 2 horas antes.
+                            Puedes cancelar hasta 2 horas antes del inicio.
                         </p>
                     </form>
                 </div>
