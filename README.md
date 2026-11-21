@@ -50,8 +50,8 @@ Además de la web, ofrece una **API REST** documentada, lista para conectar una 
 
 | Quién | Qué puede hacer |
 |-------|-----------------|
-| **Visitante** (sin cuenta) | Ver el catálogo de espacios, filtrar por tipo y consultar la agenda de cualquier día |
-| **Cliente** (con cuenta) | Todo lo anterior + reservar, ver "Mis reservas" y cancelar las suyas hasta 2 horas antes |
+| **Visitante** (sin cuenta) | Ver la presentación del servicio, el catálogo de espacios (filtrable por tipo) y la agenda de cualquier día |
+| **Cliente** (con cuenta) | Todo lo anterior + reservar, ver su **calendario mensual** de reservas y cancelar las suyas hasta 2 horas antes |
 | **Administrador** | Todo lo anterior + crear, editar, desactivar y reactivar espacios; ver y cancelar cualquier reserva |
 
 Tipos de espacio: **sala de reuniones**, **escritorio**, **oficina privada** y **auditorio**.
@@ -66,7 +66,8 @@ Cada uno tiene capacidad y horario de atención (por ejemplo, de 08:00 a 20:00).
    pasado.
 4. **Llega un correo** de confirmación con los detalles.
 5. **24 horas antes** llega un recordatorio.
-6. Si hace falta, se **cancela** desde "Mis reservas" (hasta 2 horas antes) y llega un correo de cancelación.
+6. En **"Mis reservas"** aparece en un **calendario mensual** (o, si se prefiere, en una lista con filtros).
+   Desde ahí se **cancela** (hasta 2 horas antes) y llega un correo de cancelación.
 7. Cuando el horario termina, la reserva pasa sola al estado **completada**.
 
 ```mermaid
