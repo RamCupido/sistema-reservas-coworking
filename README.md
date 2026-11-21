@@ -55,15 +55,15 @@ Además de la web, ofrece una **API REST** documentada, lista para conectar una 
 | **Administrador** | Todo lo anterior + crear, editar, desactivar y reactivar espacios; ver y cancelar cualquier reserva |
 
 Tipos de espacio: **sala de reuniones**, **escritorio**, **oficina privada** y **auditorio**.
-Cada uno tiene capacidad, precio por hora y horario de atención (por ejemplo, de 08:00 a 20:00).
+Cada uno tiene capacidad y horario de atención (por ejemplo, de 08:00 a 20:00).
 
 ## Cómo se vive una reserva
 
 1. **Elegir un espacio** en el catálogo y abrir su **agenda**: el día aparece dividido en bloques de 30 minutos,
    en verde los libres y tachados los ocupados o ya pasados.
-2. **Seleccionar el horario** pulsando el bloque de inicio y el de fin. La página muestra el precio estimado.
-3. **Confirmar.** El servidor vuelve a comprobarlo todo (horario de atención, que siga libre, que no sea en el
-   pasado) y calcula el precio definitivo.
+2. **Seleccionar el horario** pulsando el bloque de inicio y el de fin.
+3. **Confirmar.** El servidor vuelve a comprobarlo todo: horario de atención, que siga libre y que no sea en el
+   pasado.
 4. **Llega un correo** de confirmación con los detalles.
 5. **24 horas antes** llega un recordatorio.
 6. Si hace falta, se **cancela** desde "Mis reservas" (hasta 2 horas antes) y llega un correo de cancelación.
@@ -79,7 +79,7 @@ stateDiagram-v2
     COMPLETADA --> [*]
 ```
 
-> No hay pagos: las reservas nacen confirmadas.
+> No hay precios ni pagos: reservar es gratuito y las reservas nacen confirmadas.
 
 ## Cómo está construido
 
@@ -88,7 +88,7 @@ La aplicación sigue una **arquitectura por capas**. Una analogía útil es un r
 | Capa | En el restaurante | En el proyecto |
 |------|-------------------|----------------|
 | **Controllers** | El camarero: toma el pedido y entrega el plato, pero no cocina | Reciben la petición (página web o API), validan el formato y devuelven la respuesta |
-| **Services** | La cocina: donde se aplican las recetas | Toda la lógica de negocio: solapamientos, plazos, precios |
+| **Services** | La cocina: donde se aplican las recetas | Toda la lógica de negocio: solapamientos, horarios, plazos |
 | **Repositories** | La despensa | Leen y guardan datos en PostgreSQL |
 
 La web y la API son **dos puertas de entrada a la misma cocina**: ambas usan los mismos services, así que
@@ -165,7 +165,6 @@ erDiagram
         string nombre "único"
         string tipo "SALA_REUNIONES, ESCRITORIO..."
         int capacidad
-        decimal precio_por_hora
         time hora_apertura
         time hora_cierre
         boolean activo "borrado lógico"
@@ -175,7 +174,6 @@ erDiagram
         timestamptz fecha_inicio "guardada en UTC"
         timestamptz fecha_fin
         string estado "CONFIRMADA, CANCELADA, COMPLETADA"
-        decimal precio_total "congelado al reservar"
         timestamptz recordatorio_enviado_en
         bigint version "bloqueo optimista"
     }
@@ -193,8 +191,7 @@ erDiagram
 | 2 | **Dos personas no pueden ganar el mismo horario** aunque reserven a la vez | Constraint `EXCLUDE USING gist` en la base de datos |
 | 3 | Dentro del **horario de atención**, en **bloques de 30 minutos**, el mismo día y **nunca en el pasado** | Validación en `ReservaService` |
 | 4 | El cliente **solo cancela las suyas y hasta 2 horas antes**; el admin, cualquiera | `ReservaService`. Una reserva ajena responde "no encontrada", sin confirmar que existe |
-| 5 | **Precio = horas × precio por hora**, calculado por el servidor y congelado al reservar | `ReservaService`; el cliente nunca envía el precio |
-| 6 | **Recordatorio por correo 24 h antes** | Tarea programada cada 15 minutos |
+| 5 | **Recordatorio por correo 24 h antes** | Tarea programada cada 15 minutos |
 
 Si un administrador desactiva un espacio, sus reservas futuras **se mantienen** y el panel le avisa de
 cuántas hay, para que decida qué hacer con ellas.
@@ -462,7 +459,7 @@ Toda la configuración sensible se pasa por **variables de entorno** (en local, 
 ./mvnw test     # requiere Docker en marcha
 ```
 
-Hay **más de 200 tests automáticos**. Los de integración usan un **PostgreSQL real** en un contenedor
+Hay **cerca de 200 tests automáticos**. Los de integración usan un **PostgreSQL real** en un contenedor
 (Testcontainers), así que las reglas que viven en la base de datos (como el constraint anti-solapamiento) también
 se prueban de verdad.
 
@@ -470,7 +467,7 @@ se prueban de verdad.
 |------|------------------------------|
 | Autenticación | Registro, login, tokens inválidos o caducados, acceso por rol |
 | Espacios | Validaciones, nombre único, borrado lógico, paginación y filtros |
-| Reservas | Solapamientos, horario y bloques de 30 min, plazo de 2 h, precio, **10 reservas simultáneas** |
+| Reservas | Solapamientos, horario y bloques de 30 min, plazo de 2 h, **10 reservas simultáneas** |
 | Web | Login por formulario, CSRF, permisos del panel de admin, flujo completo de reservar y cancelar |
 | Correos y tareas | Sin correo si la reserva falla, SMTP caído, recordatorio una sola vez y reintentos |
 
@@ -508,7 +505,7 @@ src/main/java/com/ramses/reservas/
 └── common/        Excepciones, manejo de errores, configuración y utilidades
 
 src/main/resources/
-├── db/migration/  Migraciones Flyway (V1 ... V5): historial versionado de la base de datos
+├── db/migration/  Migraciones Flyway (V1 ... V6): historial versionado de la base de datos
 ├── templates/     Páginas HTML (Thymeleaf) y plantilla de correo
 ├── static/        CSS y JavaScript propios
 └── application*.yml  Configuración por perfil
@@ -524,7 +521,6 @@ Convenciones: nombres de dominio en español (`Reserva`, `Recurso`) y términos 
 | Constraint `EXCLUDE USING gist` contra solapamientos | Bloqueo pesimista `FOR UPDATE` | Un horario libre no tiene filas que bloquear; la garantía vive en la base de datos |
 | Dos cadenas de seguridad (sesión para la web, JWT para la API) | JWT en una cookie, o token en `localStorage` | Es el patrón estándar de Spring; un token en `localStorage` podría robarse con XSS |
 | Fechas en UTC (`TIMESTAMPTZ`) y conversión en los bordes | Guardar la hora local | Un instante UTC no es ambiguo; la zona del negocio se aplica al mostrar |
-| Precio calculado en el backend y congelado | Recibirlo del cliente | El cliente no es de confianza; cambiar la tarifa no altera reservas hechas |
 | Correos por eventos tras el commit y en segundo plano | Enviar dentro de `crear()` | Un SMTP lento o caído no frena ni deshace la reserva |
 | Recordatorio "reclamado" con un `UPDATE` atómico | Marcar después de enviar | Evita duplicados aunque la tarea corra dos veces a la vez |
 | Borrado lógico de espacios | Borrar la fila | Las reservas históricas siguen siendo consistentes |
