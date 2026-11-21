@@ -56,7 +56,7 @@ public class ReservaWebController {
         try {
             ReservaResponse creada = reservaService.crear(form.toRequest(), authentication.getName());
             flash.addFlashAttribute("exito", "Reserva confirmada: " + creada.recurso().nombre() + ", "
-                    + creada.fechaInicio().format(FORMATO) + ". Total: $" + creada.precioTotal());
+                    + creada.fechaInicio().format(FORMATO));
             return "redirect:/mis-reservas";
         } catch (ReglaNegocioException | ConflictoException e) {
             // Horario ocupado, fuera de horario, en el pasado...: se avisa en la misma agenda.

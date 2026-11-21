@@ -7,7 +7,6 @@ import java.time.LocalDateTime;
 /**
  * Fechas en hora local del coworking (sin zona): "2026-11-20T10:00".
  * Las reglas de negocio (horario, bloques de 30 min, pasado) las valida el service.
- * No hay campo de precio: se calcula siempre en el backend.
  */
 public record CrearReservaRequest(
         @NotNull(message = "El recurso es obligatorio")

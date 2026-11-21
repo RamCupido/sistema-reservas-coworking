@@ -8,7 +8,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import java.time.LocalTime;
 import lombok.Builder;
 import lombok.Getter;
@@ -38,10 +37,6 @@ public class Recurso {
     @Column(nullable = false)
     private Integer capacidad;
 
-    /** BigDecimal y no double: con dinero no se aceptan errores de redondeo binario. */
-    @Column(name = "precio_por_hora", nullable = false, precision = 10, scale = 2)
-    private BigDecimal precioPorHora;
-
     @Column(nullable = false)
     private boolean activo;
 
@@ -57,12 +52,11 @@ public class Recurso {
     /** @Builder sobre el constructor (no la clase) para que el id nunca se pueda fijar a mano. */
     @Builder
     public Recurso(String nombre, String descripcion, TipoRecurso tipo, Integer capacidad,
-                   BigDecimal precioPorHora, boolean activo, LocalTime horaApertura, LocalTime horaCierre) {
+                   boolean activo, LocalTime horaApertura, LocalTime horaCierre) {
         this.nombre = nombre;
         this.descripcion = descripcion;
         this.tipo = tipo;
         this.capacidad = capacidad;
-        this.precioPorHora = precioPorHora;
         this.activo = activo;
         this.horaApertura = horaApertura;
         this.horaCierre = horaCierre;

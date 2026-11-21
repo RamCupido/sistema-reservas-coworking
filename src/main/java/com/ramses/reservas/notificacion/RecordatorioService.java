@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Regla 6: recordatorio por correo 24 h antes del inicio.
+ * Regla 5: recordatorio por correo 24 h antes del inicio.
  * <p>
  * Para cada candidata: 1) se "reclama" con un UPDATE atómico, 2) se envía, 3) si el envío falla,
  * se libera para reintentar en la siguiente ejecución. Así no hay duplicados aunque la tarea se

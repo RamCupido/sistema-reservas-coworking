@@ -2,14 +2,11 @@ package com.ramses.reservas.recurso.dto;
 
 import com.ramses.reservas.recurso.TipoRecurso;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
-import java.math.BigDecimal;
 import java.time.LocalTime;
 
 /**
@@ -34,12 +31,6 @@ public record RecursoRequest(
         @Max(value = 1000, message = "La capacidad no puede superar 1000 personas")
         @Schema(example = "8")
         Integer capacidad,
-
-        @NotNull(message = "El precio por hora es obligatorio")
-        @DecimalMin(value = "0.00", message = "El precio por hora no puede ser negativo")
-        @Digits(integer = 8, fraction = 2, message = "El precio admite como máximo 2 decimales")
-        @Schema(example = "25.00")
-        BigDecimal precioPorHora,
 
         @NotNull(message = "La hora de apertura es obligatoria")
         @Schema(type = "string", example = "08:00")

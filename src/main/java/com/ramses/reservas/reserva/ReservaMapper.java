@@ -24,7 +24,6 @@ public class ReservaMapper {
                 aHoraLocal(reserva.getFechaInicio()),
                 aHoraLocal(reserva.getFechaFin()),
                 reserva.getEstado(),
-                reserva.getPrecioTotal(),
                 reserva.getFechaCreacion());
     }
 

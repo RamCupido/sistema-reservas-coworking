@@ -16,8 +16,6 @@ import com.ramses.reservas.reserva.dto.CrearReservaRequest;
 import com.ramses.reservas.reserva.dto.ReservaResponse;
 import com.ramses.reservas.usuario.Usuario;
 import com.ramses.reservas.usuario.UsuarioRepository;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Duration;
@@ -78,8 +76,7 @@ public class ReservaService {
             throw new ConflictoReservaException(recurso.getNombre());
         }
 
-        Reserva reserva = new Reserva(usuario, recurso, inicioUtc, finUtc,
-                calcularPrecio(recurso.getPrecioPorHora(), Duration.between(inicio, fin)));
+        Reserva reserva = new Reserva(usuario, recurso, inicioUtc, finUtc);
         Reserva guardada;
         try {
             // saveAndFlush fuerza el INSERT ahora (no al hacer commit) para poder traducir el error aquí.
@@ -208,13 +205,6 @@ public class ReservaService {
             return new CancelacionFueraDePlazoException(anticipacion);
         }
         return null;
-    }
-
-    /** Regla 5: precioTotal = horas × precioPorHora (en minutos para no perder la media hora). */
-    static BigDecimal calcularPrecio(BigDecimal precioPorHora, Duration duracion) {
-        return precioPorHora
-                .multiply(BigDecimal.valueOf(duracion.toMinutes()))
-                .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
     }
 
     private static boolean alineadoABloque(LocalTime hora) {

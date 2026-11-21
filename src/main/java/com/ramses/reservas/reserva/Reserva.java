@@ -14,7 +14,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-import java.math.BigDecimal;
 import java.time.Instant;
 import lombok.Getter;
 import org.hibernate.annotations.CreationTimestamp;
@@ -52,10 +51,6 @@ public class Reserva {
     @Column(nullable = false, length = 20)
     private EstadoReserva estado;
 
-    /** Precio congelado al reservar: si luego cambia el precio del recurso, esta reserva no varía. */
-    @Column(name = "precio_total", nullable = false, precision = 10, scale = 2)
-    private BigDecimal precioTotal;
-
     @CreationTimestamp
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
     private Instant fechaCreacion;
@@ -78,12 +73,11 @@ public class Reserva {
     protected Reserva() {
     }
 
-    public Reserva(Usuario usuario, Recurso recurso, Instant fechaInicio, Instant fechaFin, BigDecimal precioTotal) {
+    public Reserva(Usuario usuario, Recurso recurso, Instant fechaInicio, Instant fechaFin) {
         this.usuario = usuario;
         this.recurso = recurso;
         this.fechaInicio = fechaInicio;
         this.fechaFin = fechaFin;
-        this.precioTotal = precioTotal;
         this.estado = EstadoReserva.CONFIRMADA;
     }
 

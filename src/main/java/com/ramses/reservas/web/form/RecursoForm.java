@@ -3,7 +3,6 @@ package com.ramses.reservas.web.form;
 import com.ramses.reservas.recurso.TipoRecurso;
 import com.ramses.reservas.recurso.dto.RecursoRequest;
 import com.ramses.reservas.recurso.dto.RecursoResponse;
-import java.math.BigDecimal;
 import java.time.LocalTime;
 import lombok.Getter;
 import lombok.Setter;
@@ -18,7 +17,6 @@ public class RecursoForm {
     private String descripcion;
     private TipoRecurso tipo;
     private Integer capacidad;
-    private BigDecimal precioPorHora;
 
     // <input type="time"> envía "08:00"
     @DateTimeFormat(pattern = "HH:mm")
@@ -35,7 +33,6 @@ public class RecursoForm {
         form.descripcion = recurso.descripcion();
         form.tipo = recurso.tipo();
         form.capacidad = recurso.capacidad();
-        form.precioPorHora = recurso.precioPorHora();
         form.horaApertura = recurso.horaApertura();
         form.horaCierre = recurso.horaCierre();
         form.activo = recurso.activo();
@@ -44,7 +41,7 @@ public class RecursoForm {
 
     public RecursoRequest toRequest() {
         String descripcionLimpia = descripcion == null || descripcion.isBlank() ? null : descripcion.trim();
-        return new RecursoRequest(nombre, descripcionLimpia, tipo, capacidad, precioPorHora,
+        return new RecursoRequest(nombre, descripcionLimpia, tipo, capacidad,
                 horaApertura, horaCierre, activo);
     }
 }
