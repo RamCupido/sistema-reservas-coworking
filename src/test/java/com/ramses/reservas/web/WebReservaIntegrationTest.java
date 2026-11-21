@@ -30,6 +30,7 @@ import com.ramses.reservas.usuario.Usuario;
 import com.ramses.reservas.usuario.UsuarioRepository;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -135,9 +136,10 @@ class WebReservaIntegrationTest {
     class Reservar {
 
         @Test
-        void reservaDesdeElFormularioYRedirigeAMisReservas() throws Exception {
+        void reservaDesdeElFormularioYRedirigeAlCalendarioDeEseMes() throws Exception {
             mockMvc.perform(formularioReserva("10:00", "11:30"))
-                    .andExpect(redirectedUrl("/mis-reservas"))
+                    .andExpect(redirectedUrl("/mis-reservas?mes=" + YearMonth.from(dia)))
+                    .andExpect(flash().attributeExists("reservaNueva"))
                     .andExpect(flash().attribute("exito", containsString("Reserva confirmada: Sala Andes")));
 
             assertThat(reservaRepository.count()).isEqualTo(1);
@@ -184,7 +186,7 @@ class WebReservaIntegrationTest {
             ReservaResponse propia = reservaDe(ANA, 10, 11);
             reservaDe("beto@mail.com", 12, 13);
 
-            var resultado = mockMvc.perform(get("/mis-reservas").with(user(ANA)))
+            var resultado = mockMvc.perform(get("/mis-reservas").param("vista", "lista").with(user(ANA)))
                     .andExpect(status().isOk())
                     .andExpect(model().attribute("cancelables", Set.of(propia.id())))
                     .andReturn();
@@ -192,6 +194,64 @@ class WebReservaIntegrationTest {
             var pagina = (com.ramses.reservas.common.dto.PaginaResponse<?>) resultado.getModelAndView().getModel()
                     .get("pagina");
             assertThat(pagina.totalElements()).isEqualTo(1);
+        }
+
+        @Test
+        void porDefectoMuestraElCalendarioDelMesConLasReservasPropias() throws Exception {
+            ReservaResponse propia = reservaDe(ANA, 10, 11);
+            reservaDe("beto@mail.com", 12, 13);
+
+            var resultado = mockMvc.perform(get("/mis-reservas").param("mes", YearMonth.from(dia).toString())
+                            .with(user(ANA)))
+                    .andExpect(status().isOk())
+                    .andExpect(model().attribute("vista", "calendario"))
+                    .andExpect(model().attribute("cancelables", Set.of(propia.id())))
+                    .andExpect(content().string(containsString("dia-" + dia)))
+                    .andReturn();
+
+            var calendario = (CalendarioMensual) resultado.getModelAndView().getModel().get("calendario");
+            assertThat(calendario.mes()).isEqualTo(YearMonth.from(dia));
+            assertThat(calendario.totalReservasDelMes()).isEqualTo(1);
+            assertThat(calendario.diasConReservas().getFirst().fecha()).isEqualTo(dia);
+        }
+
+        @Test
+        void unMesSinReservasMuestraElCalendarioVacio() throws Exception {
+            reservaDe(ANA, 10, 11);
+
+            var resultado = mockMvc.perform(get("/mis-reservas").param("mes", YearMonth.from(dia).plusMonths(3).toString())
+                            .with(user(ANA)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("No tienes reservas este mes")))
+                    .andReturn();
+
+            var calendario = (CalendarioMensual) resultado.getModelAndView().getModel().get("calendario");
+            assertThat(calendario.totalReservasDelMes()).isZero();
+        }
+
+        @Test
+        void unMesMalFormadoEsUn400() throws Exception {
+            mockMvc.perform(get("/mis-reservas").param("mes", "noviembre").with(user(ANA)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void cancelarDesdeElCalendarioVuelveAlMismoMes() throws Exception {
+            ReservaResponse reserva = reservaDe(ANA, 10, 11);
+            String mes = YearMonth.from(dia).toString();
+
+            mockMvc.perform(post("/mis-reservas/{id}/cancelar", reserva.id()).param("mes", mes)
+                            .with(user(ANA)).with(csrf()))
+                    .andExpect(redirectedUrl("/mis-reservas?mes=" + mes));
+        }
+
+        @Test
+        void cancelarDesdeLaListaVuelveALaLista() throws Exception {
+            ReservaResponse reserva = reservaDe(ANA, 10, 11);
+
+            mockMvc.perform(post("/mis-reservas/{id}/cancelar", reserva.id()).param("vista", "lista")
+                            .param("page", "0").with(user(ANA)).with(csrf()))
+                    .andExpect(redirectedUrl("/mis-reservas?vista=lista&page=0"));
         }
 
         @Test
