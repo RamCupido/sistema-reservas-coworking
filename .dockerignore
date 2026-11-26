@@ -1,0 +1,11 @@
+# Lo que no debe entrar en la imagen: compilados locales, secretos y metadatos.
+target/
+.env
+*.env.local
+.git/
+.github/
+.idea/
+.vscode/
+*.iml
+CLAUDE.md
+README.md
