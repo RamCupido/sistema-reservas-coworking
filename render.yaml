@@ -1,0 +1,31 @@
+# Blueprint de Render: describe el servicio como código. En el panel de Render:
+# New → Blueprint → elegir este repositorio. Ver la guía en docs/DESPLIEGUE.md.
+services:
+  - type: web
+    name: reservas-coworking
+    runtime: docker
+    plan: free
+    # Virginia: la región más cercana a Ecuador. Crea la base de Neon en AWS us-east-1.
+    region: virginia
+    dockerfilePath: ./Dockerfile
+    # Render da por bueno el despliegue cuando esta ruta responde 200 (incluye la BD).
+    healthCheckPath: /actuator/health
+    # Solo despliega si el CI de GitHub Actions pasa en ese commit.
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      # Render genera una clave aleatoria de 256 bits al crear el servicio.
+      - key: JWT_SECRET
+        generateValue: true
+      # sync: false → Render pide el valor en el panel; nunca se guarda en el repositorio.
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
