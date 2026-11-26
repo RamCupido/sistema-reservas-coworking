@@ -78,7 +78,8 @@ las reglas de negocio están escritas una sola vez.
 | **Spring Mail** + `@Async` + `@Scheduled` | Enviar correos en segundo plano y ejecutar tareas periódicas |
 | **springdoc-openapi** | Documentación interactiva de la API (Swagger UI) |
 | **JUnit 5**, **Mockito**, **MockMvc**, **Testcontainers** | Tests automáticos, incluidos tests contra un PostgreSQL real |
-| **Docker Compose** | Levantar PostgreSQL y Mailpit en local con un comando |
+| **Docker** + **Docker Compose** | Empaquetar la aplicación en una imagen y levantarla en local con PostgreSQL y Mailpit |
+| **Render** + **Neon** | Publicar la demo gratis: servidor y base de datos PostgreSQL |
 | **GitHub Actions** | Ejecutar todos los tests en cada push y pull request |
 
 ## Ejecutarlo en tu ordenador
@@ -122,9 +123,25 @@ cambia `POSTGRES_PORT` en `.env`.
 ### Primer uso
 
 1. Entra con el administrador definido en `.env` (`ADMIN_EMAIL` / `ADMIN_PASSWORD`); se crea solo al arrancar.
-2. En **Admin → Recursos**, crea uno o varios espacios.
+2. En **Administración → Espacios**, crea uno o varios espacios.
 3. Cierra sesión, **crea una cuenta de cliente** y haz tu primera reserva.
 4. Mira el correo de confirmación en http://localhost:8025.
+
+### Todo con Docker (sin instalar Java)
+
+```bash
+cp .env.example .env    # y edítalo como en el paso 2
+docker compose up --build
+```
+
+Construye la aplicación con el `Dockerfile` y la arranca junto a PostgreSQL y Mailpit, con el mismo límite de
+memoria que en internet (512 MB).
+
+## Publicarla en internet
+
+La aplicación está preparada para publicarse **gratis**: el servidor en [Render](https://render.com) y la base
+de datos en [Neon](https://neon.com). Cada cambio en `main` que supera los tests del CI se publica solo.
+Los pasos están en **[docs/DESPLIEGUE.md](docs/DESPLIEGUE.md)**.
 
 ## Configuración
 
@@ -178,5 +195,6 @@ Convenciones: nombres de dominio en español (`Reserva`, `Recurso`) y términos 
 - [ ] **Fase 6** — Entrega
   - [x] CI con GitHub Actions (push y pull request)
   - [x] README final
-  - [ ] Dockerfile multi-stage
-  - [ ] Despliegue de una demo pública
+  - [x] Dockerfile multi-stage
+  - [x] Configuración de despliegue en Render + Neon
+  - [ ] Demo pública en marcha
