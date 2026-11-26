@@ -4,11 +4,24 @@ spring:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+    # Pocas conexiones: el plan gratuito de Neon y los 512 MB de Render no dan para más,
+    # y una app con poco tráfico no las necesita.
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
   jpa:
     show-sql: false
 
-# En producción la app se sirve por HTTPS: la cookie de sesión solo viaja cifrada.
 server:
+  # Render termina el HTTPS y reenvía la petición por HTTP con cabeceras X-Forwarded-*.
+  # Sin esto, la app creería que la visitan por http:// y las redirecciones (login, logout)
+  # apuntarían a http.
+  forward-headers-strategy: native
+  # Menos hilos que el valor por defecto (200): cada hilo consume memoria.
+  tomcat:
+    threads:
+      max: 50
+  # En producción la app se sirve por HTTPS: la cookie de sesión solo viaja cifrada.
   servlet:
     session:
       cookie:
@@ -17,6 +30,8 @@ server:
 # En producción los correos se activan explícitamente (requiere configurar MAIL_*).
 notificaciones:
   habilitadas: ${NOTIFICACIONES_HABILITADAS:false}
+  # Enlaces de los correos. Render define RENDER_EXTERNAL_URL (https://<servicio>.onrender.com).
+  url-base: ${NOTIFICACIONES_URL_BASE:${RENDER_EXTERNAL_URL:http://localhost:8080}}
 
 management:
   endpoint:
