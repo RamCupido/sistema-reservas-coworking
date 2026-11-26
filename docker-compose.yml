@@ -24,5 +24,28 @@ services:
       - "1025:1025"   # SMTP
       - "8025:8025"   # bandeja web
 
+  # La aplicación construida con el Dockerfile, igual que en Render: docker compose up --build
+  # Para desarrollar es más cómodo arrancar solo db y mailpit y ejecutar la app con ./mvnw.
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      NOTIFICACIONES_HABILITADAS: "true"
+    # Mismo límite de memoria que el plan gratuito de Render.
+    mem_limit: 512m
+
 volumes:
   pgdata:
