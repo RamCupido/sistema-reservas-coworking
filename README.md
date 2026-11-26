@@ -5,6 +5,11 @@
 ![Spring Boot 3.5](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen)
 ![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-blue)
 
+### 🌐 [Ver la demo en vivo → reservas-coworking.onrender.com](https://reservas-coworking.onrender.com)
+
+> La demo está en un servidor gratuito que se duerme cuando nadie la usa: la primera visita puede tardar
+> 1–2 minutos en cargar. Después va con normalidad.
+
 ## En pocas palabras
 
 Imagina un edificio de coworking con salas de reuniones, escritorios, oficinas privadas y un auditorio.
@@ -183,18 +188,3 @@ src/main/resources/
 
 Convenciones: nombres de dominio en español (`Reserva`, `Recurso`) y términos técnicos en inglés (`Service`,
 `Controller`, `Repository`). Los controllers nunca devuelven entidades, solo DTOs (`record` de Java).
-
-## Roadmap
-
-- [x] **Fase 0** — Esqueleto: Maven, docker-compose, perfiles, Flyway, healthcheck
-- [x] **Fase 1** — Usuarios y autenticación JWT con roles
-- [x] **Fase 2** — CRUD de espacios, manejo global de errores, Swagger
-- [x] **Fase 3** — Reservas: solapamiento, concurrencia, cancelación y disponibilidad
-- [x] **Fase 4** — Frontend Thymeleaf: catálogo, agenda, mis reservas y panel de admin
-- [x] **Fase 5** — Notificaciones por correo y recordatorios programados
-- [ ] **Fase 6** — Entrega
-  - [x] CI con GitHub Actions (push y pull request)
-  - [x] README final
-  - [x] Dockerfile multi-stage
-  - [x] Configuración de despliegue en Render + Neon
-  - [ ] Demo pública en marcha
