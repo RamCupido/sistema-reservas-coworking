@@ -34,7 +34,7 @@ Además de la web, ofrece una **API REST** documentada, lista para conectar una 
 | Quién | Qué puede hacer |
 |-------|-----------------|
 | **Visitante** (sin cuenta) | Ver la presentación del servicio, el catálogo de espacios (filtrable por tipo) y la agenda de cualquier día |
-| **Cliente** (con cuenta) | Todo lo anterior + reservar, ver su **calendario mensual** de reservas y cancelar las suyas hasta 2 horas antes |
+| **Cliente** (con cuenta) | Todo lo anterior + reservar (una vez o **cada semana**, de 2 a 12 semanas), ver su **calendario mensual** de reservas y cancelar las suyas hasta 2 horas antes |
 | **Administrador** | Todo lo anterior + crear, editar, desactivar y reactivar espacios; ver y cancelar cualquier reserva |
 
 Tipos de espacio: **sala de reuniones**, **escritorio**, **oficina privada** y **auditorio**.
@@ -44,7 +44,9 @@ Cada uno tiene capacidad y horario de atención (por ejemplo, de 08:00 a 20:00).
 
 1. **Elegir un espacio** en el catálogo y abrir su **agenda**: el día aparece dividido en bloques de 30 minutos,
    en verde los libres y tachados los ocupados o ya pasados.
-2. **Seleccionar el horario** pulsando el bloque de inicio y el de fin.
+2. **Seleccionar el horario** pulsando el bloque de inicio y el de fin. Si se necesita todas las semanas, se
+   marca **"Repetir cada semana"** y se elige durante cuántas (de 2 a 12). Si alguna de esas fechas ya está
+   ocupada, no se reserva ninguna y se avisa de cuáles chocan.
 3. **Confirmar.** El servidor vuelve a comprobarlo todo: horario de atención, que siga libre y que no sea en el
    pasado.
 4. **Llega un correo** de confirmación con los detalles.
