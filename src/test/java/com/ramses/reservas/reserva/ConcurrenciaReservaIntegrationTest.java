@@ -5,11 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.ramses.reservas.IntegracionTest;
 import com.ramses.reservas.LimpiadorBaseDatos;
+import com.ramses.reservas.common.exception.ConflictoException;
 import com.ramses.reservas.common.exception.ConflictoReservaException;
 import com.ramses.reservas.recurso.Recurso;
 import com.ramses.reservas.recurso.RecursoRepository;
 import com.ramses.reservas.recurso.TipoRecurso;
 import com.ramses.reservas.reserva.dto.CrearReservaRequest;
+import com.ramses.reservas.reserva.dto.CrearSerieRequest;
 import com.ramses.reservas.usuario.Rol;
 import com.ramses.reservas.usuario.Usuario;
 import com.ramses.reservas.usuario.UsuarioRepository;
@@ -45,7 +47,11 @@ class ConcurrenciaReservaIntegrationTest {
     @Autowired
     private ReservaService reservaService;
     @Autowired
+    private SerieReservaService serieReservaService;
+    @Autowired
     private ReservaRepository reservaRepository;
+    @Autowired
+    private SerieReservaRepository serieReservaRepository;
     @Autowired
     private UsuarioRepository usuarioRepository;
     @Autowired
@@ -103,6 +109,46 @@ class ConcurrenciaReservaIntegrationTest {
         assertThat(exitos).isEqualTo(1);
         assertThat(conflictos).isEqualTo(HILOS - 1);
         assertThat(reservaRepository.count()).isEqualTo(1);
+    }
+
+    /**
+     * Todo o nada también bajo concurrencia: si una serie pierde la carrera en una sola semana,
+     * el rollback deshace la serie entera (ni reservas sueltas ni la fila de la serie).
+     */
+    @Test
+    void deDiezSeriesSimultaneasParaLasMismasSemanasSoloGanaUnaCompleta() throws Exception {
+        CrearSerieRequest mismaSerie = new CrearSerieRequest(sala.getId(), dia.atTime(10, 0), dia.atTime(11, 0), 4);
+        CountDownLatch salida = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(HILOS);
+
+        List<Future<Boolean>> resultados = new ArrayList<>();
+        for (int i = 0; i < HILOS; i++) {
+            String email = "usuario" + i + "@mail.com";
+            resultados.add(pool.submit(() -> {
+                salida.await();
+                try {
+                    serieReservaService.crear(mismaSerie, email);
+                    return true;
+                } catch (ConflictoException e) {
+                    // ConflictoSerieException si vio la serie ganadora ya guardada;
+                    // ConflictoReservaException si la detectó el constraint durante el INSERT.
+                    return false;
+                }
+            }));
+        }
+        salida.countDown();
+
+        int exitos = 0;
+        for (Future<Boolean> resultado : resultados) {
+            if (resultado.get(30, TimeUnit.SECONDS)) {
+                exitos++;
+            }
+        }
+        pool.shutdown();
+
+        assertThat(exitos).isEqualTo(1);
+        assertThat(reservaRepository.count()).isEqualTo(4);
+        assertThat(serieReservaRepository.count()).isEqualTo(1);
     }
 
     @Test

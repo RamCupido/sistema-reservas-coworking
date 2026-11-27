@@ -62,6 +62,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problema(HttpStatus.CONFLICT, ex.getTitulo(), ex.getMessage());
     }
 
+    /** Más específico que el de ConflictoException: añade qué fechas chocan, para que un cliente las muestre. */
+    @ExceptionHandler(ConflictoSerieException.class)
+    public ProblemDetail handleConflictoSerie(ConflictoSerieException ex) {
+        ProblemDetail problem = problema(HttpStatus.CONFLICT, ex.getTitulo(), ex.getMessage());
+        problem.setProperty("fechasEnConflicto", ex.getFechas());
+        return problem;
+    }
+
     @ExceptionHandler(ReglaNegocioException.class)
     public ProblemDetail handleReglaNegocio(ReglaNegocioException ex) {
         return problema(HttpStatus.BAD_REQUEST, ex.getTitulo(), ex.getMessage());
