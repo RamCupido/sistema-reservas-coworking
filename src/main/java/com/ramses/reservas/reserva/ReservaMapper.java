@@ -24,7 +24,9 @@ public class ReservaMapper {
                 aHoraLocal(reserva.getFechaInicio()),
                 aHoraLocal(reserva.getFechaFin()),
                 reserva.getEstado(),
-                reserva.getFechaCreacion());
+                reserva.getFechaCreacion(),
+                // getId() de un proxy LAZY no dispara ninguna consulta: el id ya está en la reserva.
+                reserva.getSerie() == null ? null : reserva.getSerie().getId());
     }
 
     private LocalDateTime aHoraLocal(Instant instante) {

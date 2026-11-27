@@ -21,7 +21,7 @@ class CalendarioMensualTest {
 
     private static ReservaResponse reserva(long id, LocalDateTime inicio) {
         return new ReservaResponse(id, new RecursoResumen(1L, "Sala"), null, inicio, inicio.plusHours(1),
-                EstadoReserva.CONFIRMADA, Instant.now());
+                EstadoReserva.CONFIRMADA, Instant.now(), null);
     }
 
     private static List<Dia> todosLosDias(CalendarioMensual calendario) {

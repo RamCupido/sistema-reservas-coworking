@@ -56,6 +56,10 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long>, JpaSpec
     @EntityGraph(attributePaths = {"recurso", "usuario"})
     Optional<Reserva> findConDetalleById(Long id);
 
+    /** Todas las reservas de una serie, en orden cronológico. */
+    @EntityGraph(attributePaths = {"recurso", "usuario"})
+    List<Reserva> findBySerieIdOrderByFechaInicio(Long serieId);
+
     @EntityGraph(attributePaths = {"recurso", "usuario"})
     Page<Reserva> findByUsuarioEmail(String email, Pageable pageable);
 

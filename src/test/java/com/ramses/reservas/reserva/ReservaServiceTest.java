@@ -376,7 +376,7 @@ class ReservaServiceTest {
 
         private ReservaResponse reservaQueEmpiezaEn(Duration dentroDe, EstadoReserva estado) {
             LocalDateTime inicio = AHORA.plus(dentroDe);
-            return new ReservaResponse(7L, null, null, inicio, inicio.plusHours(1), estado, Instant.now());
+            return new ReservaResponse(7L, null, null, inicio, inicio.plusHours(1), estado, Instant.now(), null);
         }
 
         @ParameterizedTest(name = "faltan {0} min, admin={1} → {2}")

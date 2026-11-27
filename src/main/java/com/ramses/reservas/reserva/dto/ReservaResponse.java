@@ -6,7 +6,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.time.LocalDateTime;
 
-/** fechaInicio/fechaFin en hora local del coworking, mismo formato que la entrada. */
+/**
+ * fechaInicio/fechaFin en hora local del coworking, mismo formato que la entrada.
+ * serieId es null si la reserva es suelta, o el id de su serie semanal.
+ */
 public record ReservaResponse(
         Long id,
         RecursoResumen recurso,
@@ -16,7 +19,9 @@ public record ReservaResponse(
         @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm") @Schema(type = "string", example = "2026-11-20T11:30")
         LocalDateTime fechaFin,
         EstadoReserva estado,
-        Instant fechaCreacion) {
+        Instant fechaCreacion,
+        @Schema(nullable = true, example = "3")
+        Long serieId) {
 
     public record RecursoResumen(Long id, String nombre) {
     }

@@ -15,6 +15,6 @@ public class LimpiadorBaseDatos {
     private final JdbcTemplate jdbcTemplate;
 
     public void limpiar() {
-        jdbcTemplate.execute("TRUNCATE TABLE reservas, recursos, usuarios RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE reservas, series_reserva, recursos, usuarios RESTART IDENTITY CASCADE");
     }
 }

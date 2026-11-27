@@ -70,14 +70,24 @@ public class Reserva {
     @Column(name = "recordatorio_enviado_en", insertable = false, updatable = false)
     private Instant recordatorioEnviadoEn;
 
+    /** null = reserva suelta; si no, la serie semanal a la que pertenece. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "serie_id")
+    private SerieReserva serie;
+
     protected Reserva() {
     }
 
     public Reserva(Usuario usuario, Recurso recurso, Instant fechaInicio, Instant fechaFin) {
+        this(usuario, recurso, fechaInicio, fechaFin, null);
+    }
+
+    public Reserva(Usuario usuario, Recurso recurso, Instant fechaInicio, Instant fechaFin, SerieReserva serie) {
         this.usuario = usuario;
         this.recurso = recurso;
         this.fechaInicio = fechaInicio;
         this.fechaFin = fechaFin;
+        this.serie = serie;
         this.estado = EstadoReserva.CONFIRMADA;
     }
 
