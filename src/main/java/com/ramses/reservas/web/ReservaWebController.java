@@ -8,7 +8,9 @@ import com.ramses.reservas.common.exception.ReglaNegocioException;
 import com.ramses.reservas.reserva.EstadoReserva;
 import com.ramses.reservas.reserva.ReservaService;
 import com.ramses.reservas.reserva.ReservasProperties;
+import com.ramses.reservas.reserva.SerieReservaService;
 import com.ramses.reservas.reserva.dto.ReservaResponse;
+import com.ramses.reservas.reserva.dto.SerieResponse;
 import com.ramses.reservas.web.form.ReservaForm;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -48,6 +50,7 @@ public class ReservaWebController {
     private static final DateTimeFormatter FORMATO = DateTimeFormatter.ofPattern("dd/MM/yyyy 'a las' HH:mm");
 
     private final ReservaService reservaService;
+    private final SerieReservaService serieService;
     private final ValidadorFormularios validador;
     private final ReservasProperties reservasProperties;
     private final Clock clock;
@@ -58,12 +61,20 @@ public class ReservaWebController {
         String volver = form.getRecursoId() == null ? "redirect:/"
                 : Urls.redirect("/recursos/" + form.getRecursoId(), "fecha", form.getFecha());
 
-        validador.validar(form.toRequest(), resultado);
+        validador.validar(form.isRepetir() ? form.toSerieRequest() : form.toRequest(), resultado);
         if (resultado.hasErrors()) {
             flash.addFlashAttribute("error", primerError(resultado));
             return volver;
         }
         try {
+            if (form.isRepetir()) {
+                SerieResponse serie = serieService.crear(form.toSerieRequest(), authentication.getName());
+                ReservaResponse primera = serie.reservas().getFirst();
+                flash.addFlashAttribute("exito", "Reserva semanal confirmada: " + serie.recurso().nombre()
+                        + ", " + serie.reservas().size() + " semanas desde el " + primera.fechaInicio().format(FORMATO));
+                flash.addFlashAttribute("serieNueva", serie.id());
+                return Urls.redirect("/mis-reservas", "mes", YearMonth.from(primera.fechaInicio()));
+            }
             ReservaResponse creada = reservaService.crear(form.toRequest(), authentication.getName());
             flash.addFlashAttribute("exito", "Reserva confirmada: " + creada.recurso().nombre() + ", "
                     + creada.fechaInicio().format(FORMATO));
@@ -133,6 +144,28 @@ public class ReservaWebController {
         } catch (ReglaNegocioException | ConflictoException e) {
             flash.addFlashAttribute("error", e.getMessage());
         }
+        return volverAMisReservas(vista, mes, estado, page);
+    }
+
+    /** "Cancelar las restantes": todas las fechas de la serie que aún se pueden cancelar. */
+    @PostMapping("/mis-reservas/series/{id}/cancelar")
+    public String cancelarSerie(@PathVariable Long id,
+                                @RequestParam(defaultValue = VISTA_CALENDARIO) String vista,
+                                @RequestParam(required = false) YearMonth mes,
+                                @RequestParam(required = false) EstadoReserva estado,
+                                @RequestParam(required = false) Integer page,
+                                Authentication authentication, RedirectAttributes flash) {
+        try {
+            SerieResponse serie = serieService.cancelarRestantes(id, authentication.getName(), esAdmin(authentication));
+            flash.addFlashAttribute("exito", "Reserva semanal cancelada: se anularon las fechas restantes de "
+                    + serie.recurso().nombre());
+        } catch (ReglaNegocioException | ConflictoException e) {
+            flash.addFlashAttribute("error", e.getMessage());
+        }
+        return volverAMisReservas(vista, mes, estado, page);
+    }
+
+    private static String volverAMisReservas(String vista, YearMonth mes, EstadoReserva estado, Integer page) {
         return VISTA_LISTA.equals(vista)
                 ? Urls.redirect("/mis-reservas", "vista", VISTA_LISTA, "estado", estado, "page", page)
                 : Urls.redirect("/mis-reservas", "mes", mes);

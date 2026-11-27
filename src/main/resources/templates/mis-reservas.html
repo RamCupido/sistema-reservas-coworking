@@ -72,10 +72,12 @@
                         <span class="numero" th:unless="${d.tieneReservas() and d.delMes}" th:text="${d.fecha.dayOfMonth}">1</span>
                         <div class="eventos">
                             <a class="evento" th:each="r : ${d.reservas}"
-                               th:classappend="${r.estado.name()} + (${r.id == reservaNueva} ? ' nueva' : '')"
+                               th:with="esNueva=${r.id == reservaNueva or (r.serieId != null and r.serieId == serieNueva)}"
+                               th:classappend="${r.estado.name()} + (${esNueva} ? ' nueva' : '')"
                                th:href="'#dia-' + ${d.fecha}"
-                               th:title="${#temporals.format(r.fechaInicio, 'HH:mm')} + '–' + ${#temporals.format(r.fechaFin, 'HH:mm')} + ' · ' + ${r.recurso.nombre} + ' (' + ${#messages.msg('estado.' + r.estado)} + ')'"
-                               th:text="${#temporals.format(r.fechaInicio, 'HH:mm')} + ' ' + ${r.recurso.nombre}">10:00 Sala Andes</a>
+                               th:title="${#temporals.format(r.fechaInicio, 'HH:mm')} + '–' + ${#temporals.format(r.fechaFin, 'HH:mm')} + ' · ' + ${r.recurso.nombre} + ' (' + ${#messages.msg('estado.' + r.estado)} + ')' + (${r.serieId != null} ? ' · semanal' : '')"><th:block th:if="${r.serieId != null}"><svg
+                                    th:replace="~{fragments/iconos :: icono('repetir', '')}"></svg></th:block>
+                                <span th:text="${#temporals.format(r.fechaInicio, 'HH:mm')} + ' ' + ${r.recurso.nombre}">10:00 Sala Andes</span></a>
                         </div>
                     </div>
                 </th:block>
@@ -114,13 +116,23 @@
                             <a class="text-body fw-medium text-decoration-none" th:href="@{/recursos/{id}(id=${r.recurso.id}, fecha=${d.fecha})}"
                                th:text="${r.recurso.nombre}">Sala Andes</a>
                             <span th:replace="~{fragments/estado :: badge(${r.estado})}"></span>
-                            <span class="badge text-bg-primary" th:if="${r.id == reservaNueva}">Nueva</span>
-                            <form th:if="${cancelables.contains(r.id)}" method="post" class="ms-auto m-0"
-                                  th:action="@{/mis-reservas/{id}/cancelar(id=${r.id})}"
-                                  onsubmit="return confirm('¿Cancelar esta reserva?')">
-                                <input type="hidden" name="mes" th:value="${mes}">
-                                <button type="submit" class="btn btn-outline-danger btn-sm">Cancelar</button>
-                            </form>
+                            <span th:replace="~{fragments/estado :: semanal(${r.serieId})}"></span>
+                            <span class="badge text-bg-primary"
+                                  th:if="${r.id == reservaNueva or (r.serieId != null and r.serieId == serieNueva)}">Nueva</span>
+                            <div class="ms-auto d-flex gap-2" th:if="${cancelables.contains(r.id)}">
+                                <form method="post" class="m-0" th:action="@{/mis-reservas/{id}/cancelar(id=${r.id})}"
+                                      onsubmit="return confirm('¿Cancelar esta reserva?')">
+                                    <input type="hidden" name="mes" th:value="${mes}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm"
+                                            th:text="${r.serieId != null} ? 'Cancelar esta fecha' : 'Cancelar'">Cancelar</button>
+                                </form>
+                                <form th:if="${r.serieId != null}" method="post" class="m-0"
+                                      th:action="@{/mis-reservas/series/{id}/cancelar(id=${r.serieId})}"
+                                      onsubmit="return confirm('¿Cancelar todas las fechas restantes de esta reserva semanal?')">
+                                    <input type="hidden" name="mes" th:value="${mes}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">Cancelar las restantes</button>
+                                </form>
+                            </div>
                         </li>
                     </ul>
                 </div>
@@ -160,16 +172,29 @@
                         <td><a class="fw-medium" th:href="@{/recursos/{id}(id=${r.recurso.id})}" th:text="${r.recurso.nombre}">Sala</a></td>
                         <td th:text="${#temporals.format(r.fechaInicio, 'dd/MM/yyyy')}">20/11/2026</td>
                         <td th:text="${#temporals.format(r.fechaInicio, 'HH:mm')} + ' – ' + ${#temporals.format(r.fechaFin, 'HH:mm')}">10:00 – 11:00</td>
-                        <td><span th:replace="~{fragments/estado :: badge(${r.estado})}"></span></td>
+                        <td>
+                            <span th:replace="~{fragments/estado :: badge(${r.estado})}"></span>
+                            <span th:replace="~{fragments/estado :: semanal(${r.serieId})}"></span>
+                        </td>
                         <td class="text-end">
-                            <form th:if="${cancelables.contains(r.id)}" method="post" class="m-0"
-                                  th:action="@{/mis-reservas/{id}/cancelar(id=${r.id})}"
-                                  onsubmit="return confirm('¿Cancelar esta reserva?')">
-                                <input type="hidden" name="vista" value="lista">
-                                <input type="hidden" name="estado" th:value="${estadoSeleccionado}" th:if="${estadoSeleccionado != null}">
-                                <input type="hidden" name="page" th:value="${pagina.page}">
-                                <button type="submit" class="btn btn-outline-danger btn-sm">Cancelar</button>
-                            </form>
+                            <div class="d-inline-flex flex-wrap justify-content-end gap-2" th:if="${cancelables.contains(r.id)}">
+                                <form method="post" class="m-0" th:action="@{/mis-reservas/{id}/cancelar(id=${r.id})}"
+                                      onsubmit="return confirm('¿Cancelar esta reserva?')">
+                                    <input type="hidden" name="vista" value="lista">
+                                    <input type="hidden" name="estado" th:value="${estadoSeleccionado}" th:if="${estadoSeleccionado != null}">
+                                    <input type="hidden" name="page" th:value="${pagina.page}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm"
+                                            th:text="${r.serieId != null} ? 'Cancelar esta fecha' : 'Cancelar'">Cancelar</button>
+                                </form>
+                                <form th:if="${r.serieId != null}" method="post" class="m-0"
+                                      th:action="@{/mis-reservas/series/{id}/cancelar(id=${r.serieId})}"
+                                      onsubmit="return confirm('¿Cancelar todas las fechas restantes de esta reserva semanal?')">
+                                    <input type="hidden" name="vista" value="lista">
+                                    <input type="hidden" name="estado" th:value="${estadoSeleccionado}" th:if="${estadoSeleccionado != null}">
+                                    <input type="hidden" name="page" th:value="${pagina.page}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">Cancelar las restantes</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     </tbody>

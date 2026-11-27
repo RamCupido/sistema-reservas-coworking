@@ -14,6 +14,10 @@
     const selInicio = document.getElementById('horaInicio');
     const selFin = document.getElementById('horaFin');
     const resumen = document.getElementById('resumen-seleccion');
+    const repetir = document.getElementById('repetir');
+    const opcionesRepeticion = document.getElementById('opciones-repeticion');
+    const selSemanas = document.getElementById('semanas');
+    const boton = document.getElementById('boton-reservar');
 
     const minutos = (hhmm) => {
         const [h, m] = hhmm.split(':').map(Number);
@@ -50,9 +54,13 @@
             b.classList.toggle('seleccionado', Boolean(dentro));
         });
 
+        const semanal = repetir.checked;
+        const semanas = Number(selSemanas.value);
+        opcionesRepeticion.hidden = !semanal;
         resumen.textContent = inicio && fin
-            ? `${inicio} – ${fin} · ${duracion(minutos(fin) - minutos(inicio))}`
+            ? `${inicio} – ${fin} · ${duracion(minutos(fin) - minutos(inicio))}${semanal ? ` · ${semanas} semanas` : ''}`
             : 'Elige un horario en la agenda';
+        boton.textContent = semanal ? `Confirmar ${semanas} reservas` : 'Confirmar reserva';
     }
 
     /** 90 → "1 h 30 min" */
@@ -80,6 +88,8 @@
         actualizar();
     });
     selFin.addEventListener('change', actualizar);
+    repetir.addEventListener('change', actualizar);
+    selSemanas.addEventListener('change', actualizar);
 
     actualizar();
 })();

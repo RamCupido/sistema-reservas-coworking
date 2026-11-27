@@ -1,6 +1,7 @@
 package com.ramses.reservas.web.form;
 
 import com.ramses.reservas.reserva.dto.CrearReservaRequest;
+import com.ramses.reservas.reserva.dto.CrearSerieRequest;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -13,6 +14,8 @@ import org.springframework.format.annotation.DateTimeFormat;
 @Setter
 public class ReservaForm {
 
+    public static final int SEMANAS_POR_DEFECTO = 4;
+
     private Long recursoId;
 
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -24,8 +27,17 @@ public class ReservaForm {
     @DateTimeFormat(pattern = "HH:mm")
     private LocalTime horaFin;
 
+    /** Casilla "Repetir cada semana": si no se marca, el navegador no la envía y queda en false. */
+    private boolean repetir;
+
+    private Integer semanas = SEMANAS_POR_DEFECTO;
+
     public CrearReservaRequest toRequest() {
         return new CrearReservaRequest(recursoId, combinar(fecha, horaInicio), combinar(fecha, horaFin));
+    }
+
+    public CrearSerieRequest toSerieRequest() {
+        return new CrearSerieRequest(recursoId, combinar(fecha, horaInicio), combinar(fecha, horaFin), semanas);
     }
 
     private static LocalDateTime combinar(LocalDate dia, LocalTime hora) {

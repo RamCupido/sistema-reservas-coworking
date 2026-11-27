@@ -506,6 +506,14 @@ h1, h2, h3, .h1, .h2, .h3, .display-5 {
     animation: destacar 1.6s ease-in-out 2;
 }
 
+/* Icono de repetición en las reservas semanales */
+.evento .icono {
+    width: .8em;
+    height: .8em;
+    margin-right: .15rem;
+    vertical-align: -.05em;
+}
+
 @keyframes destacar {
     50% {
         box-shadow: 0 0 0 3px rgba(var(--marca-rgb), .45);
@@ -529,6 +537,7 @@ h1, h2, h3, .h1, .h2, .h3, .display-5 {
         font-size: 0;
     }
 
+    .calendario .evento .icono { display: none; }
     .calendario .evento.CANCELADA { background: #d1d5db; }
     .calendario .evento.COMPLETADA { background: #0d9488; }
     .calendario .eventos { flex-direction: row; flex-wrap: wrap; justify-content: center; }

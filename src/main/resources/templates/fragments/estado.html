@@ -6,5 +6,10 @@
       th:classappend="${estado.name() == 'CONFIRMADA'} ? 'text-bg-success'
                       : (${estado.name() == 'CANCELADA'} ? 'text-bg-secondary' : 'text-bg-info')"
       th:text="${#messages.msg('estado.' + estado)}">Confirmada</span>
+
+<!--/* Etiqueta "Semanal" si la reserva pertenece a una serie; si es suelta no pinta nada. */-->
+<span th:fragment="semanal(serieId)" th:if="${serieId != null}" title="Reserva semanal"
+      class="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-1"><svg
+        th:replace="~{fragments/iconos :: icono('repetir', '')}"></svg> Semanal</span>
 </body>
 </html>

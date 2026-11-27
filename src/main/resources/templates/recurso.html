@@ -114,11 +114,31 @@
                                 </select>
                             </div>
                         </div>
+                        <!--/* Reserva semanal: "lunes" → "Todos los lunes"; "sábado" → "Todos los sábados" */-->
+                        <div class="mb-3" th:with="dia=${#temporals.format(fecha, 'EEEE')},
+                                                   plural=${#strings.endsWith(dia, 's') ? dia : dia + 's'}">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="repetir"
+                                       name="repetir" value="true" aria-controls="opciones-repeticion">
+                                <label class="form-check-label small d-inline-flex align-items-center gap-1" for="repetir">
+                                    <svg th:replace="~{fragments/iconos :: icono('repetir', '')}"></svg> Repetir cada semana
+                                </label>
+                            </div>
+                            <div id="opciones-repeticion" class="mt-2" hidden>
+                                <label for="semanas" class="form-label small mb-1">Durante</label>
+                                <select id="semanas" name="semanas" class="form-select">
+                                    <option th:each="n : ${#numbers.sequence(2, 12)}" th:value="${n}"
+                                            th:text="${n} + ' semanas'" th:selected="${n == 4}">4 semanas</option>
+                                </select>
+                                <div class="form-text" th:text="'Todos los ' + ${plural} + ' a la misma hora. Si alguna fecha está ocupada, no se reserva ninguna.'">
+                                    Todos los lunes a la misma hora.</div>
+                            </div>
+                        </div>
                         <div class="rounded-3 p-3 mb-3 small" style="background: var(--marca-suave)">
                             <div class="text-body-secondary">Tu selección</div>
                             <div class="fw-semibold" id="resumen-seleccion">Elige un horario en la agenda</div>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">Confirmar reserva</button>
+                        <button type="submit" class="btn btn-primary w-100" id="boton-reservar">Confirmar reserva</button>
                         <p class="form-text mt-2 mb-0">
                             Recibirás la confirmación por correo. Puedes cancelar hasta 2 horas antes del inicio.
                         </p>
