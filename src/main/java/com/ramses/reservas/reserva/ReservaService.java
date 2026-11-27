@@ -218,14 +218,19 @@ public class ReservaService {
      * Devolverla (en vez de lanzarla) permite reutilizar la regla también como booleano.
      */
     private RuntimeException motivoNoCancelable(EstadoReserva estado, Instant inicio, boolean esAdmin) {
-        Instant ahora = Instant.now(clock);
+        return motivoNoCancelable(estado, inicio, esAdmin, Instant.now(clock),
+                reservasProperties.anticipacionMinimaCancelacion());
+    }
+
+    /** Estática y sin dependencias: la reutiliza {@link SerieReservaService} para "cancelar las restantes". */
+    static RuntimeException motivoNoCancelable(EstadoReserva estado, Instant inicio, boolean esAdmin,
+                                               Instant ahora, Duration anticipacion) {
         if (estado == EstadoReserva.CANCELADA) {
             return new ReservaNoCancelableException("La reserva ya está cancelada");
         }
         if (estado == EstadoReserva.COMPLETADA || !inicio.isAfter(ahora)) {
             return new ReservaNoCancelableException("La reserva ya comenzó o finalizó");
         }
-        Duration anticipacion = reservasProperties.anticipacionMinimaCancelacion();
         if (!esAdmin && Duration.between(ahora, inicio).compareTo(anticipacion) < 0) {
             return new CancelacionFueraDePlazoException(anticipacion);
         }
