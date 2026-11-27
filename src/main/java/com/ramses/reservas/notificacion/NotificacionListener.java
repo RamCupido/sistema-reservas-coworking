@@ -2,6 +2,8 @@ package com.ramses.reservas.notificacion;
 
 import com.ramses.reservas.reserva.ReservaCanceladaEvent;
 import com.ramses.reservas.reserva.ReservaCreadaEvent;
+import com.ramses.reservas.reserva.SerieCanceladaEvent;
+import com.ramses.reservas.reserva.SerieCreadaEvent;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +46,27 @@ public class NotificacionListener {
             notificacionService.enviarCancelacion(evento.reservaId(), evento.porAdministrador());
         } catch (RuntimeException e) {
             log.error("No se pudo enviar la cancelación de la reserva {}", evento.reservaId(), e);
+        }
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void alCrearSerie(SerieCreadaEvent evento) {
+        try {
+            notificacionService.enviarConfirmacionSerie(evento.serieId());
+        } catch (RuntimeException e) {
+            log.error("No se pudo enviar la confirmación de la serie {}", evento.serieId(), e);
+        }
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void alCancelarSerie(SerieCanceladaEvent evento) {
+        try {
+            notificacionService.enviarCancelacionSerie(evento.serieId(), evento.reservaIds(),
+                    evento.porAdministrador());
+        } catch (RuntimeException e) {
+            log.error("No se pudo enviar la cancelación de la serie {}", evento.serieId(), e);
         }
     }
 }

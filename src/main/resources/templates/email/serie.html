@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!--/*
+  Correo de una reserva semanal: confirmación o cancelación (variable "tipo"), con TODAS las
+  fechas en un solo mensaje. Mismas reglas que email/reserva.html: estilos en línea y enlaces con urlBase.
+*/-->
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Coworking Reservas</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="560" cellpadding="0" cellspacing="0"
+                   style="max-width:560px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden;">
+                <tr>
+                    <td style="background:#0d6efd;color:#ffffff;padding:20px 28px;font-size:18px;font-weight:bold;">
+                        Coworking Reservas
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:28px;" th:with="cancelacion=${tipo == 'SERIE_CANCELACION'}">
+                        <p style="margin:0 0 16px;font-size:16px;">Hola <strong th:text="${nombre}">Ana</strong>,</p>
+
+                        <p th:unless="${cancelacion}" style="margin:0 0 20px;font-size:15px;line-height:1.5;">
+                            Tu reserva semanal está <strong style="color:#198754;">confirmada</strong>:
+                            <strong th:text="${reservas.size()} + ' fechas'">8 fechas</strong>
+                            con el mismo horario. Te enviaremos un recordatorio 24 horas antes de cada una.
+                        </p>
+                        <p th:if="${cancelacion}" style="margin:0 0 20px;font-size:15px;line-height:1.5;">
+                            <th:block th:if="${porAdministrador}">La administración del coworking ha
+                                <strong style="color:#dc3545;">cancelado</strong> estas fechas de tu reserva semanal.
+                                Disculpa las molestias.</th:block>
+                            <th:block th:unless="${porAdministrador}">Hemos
+                                <strong style="color:#dc3545;">cancelado</strong> estas fechas de tu reserva semanal,
+                                tal como solicitaste.</th:block>
+                        </p>
+
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                               style="border:1px solid #e5e7eb;border-radius:6px;font-size:14px;">
+                            <tr>
+                                <td style="padding:10px 14px;color:#6b7280;width:35%;">Espacio</td>
+                                <td style="padding:10px 14px;font-weight:bold;" th:text="${recurso}">Sala Andes</td>
+                            </tr>
+                            <tr style="background:#f9fafb;">
+                                <td style="padding:10px 14px;color:#6b7280;">Horario</td>
+                                <td style="padding:10px 14px;"
+                                    th:text="${#strings.capitalize(#temporals.format(primera.fechaInicio, 'EEEE'))} + ', '
+                                        + ${#temporals.format(primera.fechaInicio, 'HH:mm')} + ' – '
+                                        + ${#temporals.format(primera.fechaFin, 'HH:mm')}">Lunes, 10:00 – 11:00</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px 14px;color:#6b7280;vertical-align:top;">Fechas</td>
+                                <td style="padding:10px 14px;line-height:1.7;">
+                                    <th:block th:each="r : ${reservas}">
+                                        <span th:text="${#temporals.format(r.fechaInicio, 'd ''de'' MMMM ''de'' yyyy')}">23 de noviembre de 2026</span>
+                                        <span style="color:#9ca3af;" th:text="'(#' + ${r.id} + ')'">(#12)</span><br>
+                                    </th:block>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <p style="margin:24px 0;" th:with="url=${urlBase + '/mis-reservas'}">
+                            <a th:href="${url}" href="#"
+                               style="display:inline-block;background:#0d6efd;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:6px;font-size:14px;">
+                                Ver mis reservas</a>
+                        </p>
+
+                        <p th:unless="${cancelacion}" style="margin:0;font-size:13px;color:#6b7280;line-height:1.5;">
+                            Desde "Mis reservas" puedes cancelar una sola fecha o todas las restantes,
+                            hasta 2 horas antes de cada inicio.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:16px 28px;border-top:1px solid #e5e7eb;font-size:12px;color:#9ca3af;">
+                        Este es un correo automático, no respondas a este mensaje.
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>
