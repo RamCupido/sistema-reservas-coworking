@@ -17,7 +17,7 @@ Este proyecto es la **aplicación web para reservarlos**:
 
 - Cualquiera puede ver los espacios y **qué horarios están libres** cada día.
 - Quien tiene cuenta **reserva** un horario, recibe un **correo de confirmación** y, 24 horas antes, un
-  **recordatorio**. Si no puede ir, **cancela** desde la web.
+  **recordatorio**. Si cambian sus planes, **modifica** el día, el espacio o el horario, o **cancela** desde la web.
 - La administración **gestiona los espacios** (crear, editar, desactivar) y **ve todas las reservas**.
 
 Lo más importante que resuelve: **nunca dos personas pueden reservar el mismo espacio a la misma hora**,
@@ -34,8 +34,8 @@ Además de la web, ofrece una **API REST** documentada, lista para conectar una 
 | Quién | Qué puede hacer |
 |-------|-----------------|
 | **Visitante** (sin cuenta) | Ver la presentación del servicio, el catálogo de espacios (filtrable por tipo) y la agenda de cualquier día |
-| **Cliente** (con cuenta) | Todo lo anterior + reservar (una vez o **cada semana**, de 2 a 12 semanas), ver su **calendario mensual** de reservas y cancelar las suyas hasta 2 horas antes |
-| **Administrador** | Todo lo anterior + crear, editar, desactivar y reactivar espacios; ver y cancelar cualquier reserva |
+| **Cliente** (con cuenta) | Todo lo anterior + reservar (una vez o **cada semana**, de 2 a 12 semanas), ver su **calendario mensual** de reservas y **modificar** (día, espacio u horario) o cancelar las suyas hasta 2 horas antes |
+| **Administrador** | Todo lo anterior + crear, editar, desactivar y reactivar espacios; ver y cancelar cualquier reserva (y modificarla desde la API) |
 
 Tipos de espacio: **sala de reuniones**, **escritorio**, **oficina privada** y **auditorio**.
 Cada uno tiene capacidad y horario de atención (por ejemplo, de 08:00 a 20:00).
@@ -52,7 +52,10 @@ Cada uno tiene capacidad y horario de atención (por ejemplo, de 08:00 a 20:00).
 4. **Llega un correo** de confirmación con los detalles.
 5. **24 horas antes** llega un recordatorio.
 6. En **"Mis reservas"** aparece en un **calendario mensual** (o, si se prefiere, en una lista con filtros).
-   Desde ahí se **cancela** (hasta 2 horas antes) y llega un correo de cancelación.
+   Desde ahí se **modifica** (hasta 2 horas antes): se abre la misma agenda en "modo modificar", donde se
+   elige otro día, otro espacio u otro horario, y llega un correo con el antes y el después. Las reservas
+   semanales no se modifican, solo se cancelan.
+   También se **cancela** (hasta 2 horas antes) y llega un correo de cancelación.
 7. Cuando el horario termina, la reserva pasa sola al estado **completada**.
 
 > No hay precios ni pagos: reservar es gratuito y las reservas nacen confirmadas.
@@ -176,7 +179,7 @@ src/main/java/com/ramses/reservas/
 ├── auth/          Login, registro, JWT y configuración de seguridad
 ├── usuario/       Usuarios y administrador inicial
 ├── recurso/       Espacios: CRUD y horario de atención
-├── reserva/       Lógica central: crear, cancelar, disponibilidad, eventos
+├── reserva/       Lógica central: crear, modificar, cancelar, disponibilidad, eventos
 ├── notificacion/  Correos, recordatorios y tareas programadas
 ├── web/           Controllers de las páginas (Thymeleaf) y formularios
 └── common/        Excepciones, manejo de errores, configuración y utilidades
