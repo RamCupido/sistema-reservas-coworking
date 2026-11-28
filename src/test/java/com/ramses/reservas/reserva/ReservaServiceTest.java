@@ -11,14 +11,17 @@ import static org.mockito.Mockito.when;
 import com.ramses.reservas.common.exception.CancelacionFueraDePlazoException;
 import com.ramses.reservas.common.exception.ConflictoReservaException;
 import com.ramses.reservas.common.exception.FiltroInvalidoException;
+import com.ramses.reservas.common.exception.ModificacionFueraDePlazoException;
 import com.ramses.reservas.common.exception.RecursoNoEncontradoException;
 import com.ramses.reservas.common.exception.ReservaInvalidaException;
 import com.ramses.reservas.common.exception.ReservaNoCancelableException;
 import com.ramses.reservas.common.exception.ReservaNoEncontradaException;
+import com.ramses.reservas.common.exception.ReservaNoModificableException;
 import com.ramses.reservas.recurso.Recurso;
 import com.ramses.reservas.recurso.RecursoRepository;
 import com.ramses.reservas.recurso.TipoRecurso;
 import com.ramses.reservas.reserva.dto.CrearReservaRequest;
+import com.ramses.reservas.reserva.dto.ModificarReservaRequest;
 import com.ramses.reservas.reserva.dto.ReservaResponse;
 import com.ramses.reservas.usuario.Rol;
 import com.ramses.reservas.usuario.Usuario;
@@ -40,6 +43,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -451,6 +455,221 @@ class ReservaServiceTest {
         void filtroAdminConDesdePosteriorAHastaEsInvalido() {
             assertThatThrownBy(() -> service.listarTodas(null, MANANA, HOY, Pageable.unpaged()))
                     .isInstanceOf(FiltroInvalidoException.class);
+        }
+    }
+
+    @Nested
+    class Modificar {
+
+        private static final long ID = 5L;
+        private Recurso sala2;
+
+        @BeforeEach
+        void setUpModificar() {
+            ReflectionTestUtils.setField(sala, "id", 1L);
+            sala2 = Recurso.builder().nombre("Sala Pacífico").tipo(TipoRecurso.SALA_REUNIONES).capacidad(6)
+                    .activo(true)
+                    .horaApertura(LocalTime.of(8, 0)).horaCierre(LocalTime.of(20, 0)).build();
+            ReflectionTestUtils.setField(sala2, "id", 2L);
+            when(recursoRepository.findById(2L)).thenReturn(Optional.of(sala2));
+        }
+
+        private Reserva reservaDeAna(LocalDateTime inicio, LocalDateTime fin) {
+            Reserva reserva = new Reserva(ana, sala, instante(inicio), instante(fin));
+            ReflectionTestUtils.setField(reserva, "id", ID);
+            when(reservaRepository.findConDetalleById(ID)).thenReturn(Optional.of(reserva));
+            return reserva;
+        }
+
+        private Reserva reservaDeAnaManana() {
+            return reservaDeAna(MANANA.atTime(10, 0), MANANA.atTime(11, 0));
+        }
+
+        private static ModificarReservaRequest cambio(long recursoId, LocalDateTime inicio, LocalDateTime fin) {
+            return new ModificarReservaRequest(recursoId, inicio, fin);
+        }
+
+        @Test
+        void modificaEspacioDiaYHorario() {
+            Reserva reserva = reservaDeAnaManana();
+            LocalDateTime nuevoInicio = MANANA.plusDays(1).atTime(15, 0);
+
+            ReservaResponse respuesta = service.modificar(ID,
+                    cambio(2L, nuevoInicio, MANANA.plusDays(1).atTime(16, 30)), ANA, false);
+
+            assertThat(respuesta.recurso().nombre()).isEqualTo("Sala Pacífico");
+            assertThat(respuesta.fechaInicio()).isEqualTo(nuevoInicio);
+            assertThat(respuesta.fechaFin()).isEqualTo(MANANA.plusDays(1).atTime(16, 30));
+            assertThat(respuesta.id()).isEqualTo(ID);
+            verify(reservaRepository).saveAndFlush(reserva);
+            verify(reservaRepository).liberarRecordatorio(ID);
+        }
+
+        @Test
+        void publicaEventoConLosDatosAnteriores() {
+            reservaDeAnaManana();
+
+            service.modificar(ID, cambio(2L, MANANA.atTime(15, 0), MANANA.atTime(16, 0)), ANA, false);
+
+            ArgumentCaptor<ReservaModificadaEvent> captor = ArgumentCaptor.forClass(ReservaModificadaEvent.class);
+            verify(eventos).publishEvent(captor.capture());
+            ReservaModificadaEvent evento = captor.getValue();
+            assertThat(evento.reservaId()).isEqualTo(ID);
+            assertThat(evento.recursoAnterior()).isEqualTo("Sala Andes");
+            assertThat(evento.inicioAnterior()).isEqualTo(MANANA.atTime(10, 0));
+            assertThat(evento.finAnterior()).isEqualTo(MANANA.atTime(11, 0));
+            assertThat(evento.porAdministrador()).isFalse();
+        }
+
+        @Test
+        void sinCambiosNoPublicaEventoNiReiniciaRecordatorio() {
+            reservaDeAnaManana();
+
+            service.modificar(ID, cambio(1L, MANANA.atTime(10, 0), MANANA.atTime(11, 0)), ANA, false);
+
+            verify(eventos, never()).publishEvent(any());
+            verify(reservaRepository, never()).liberarRecordatorio(any());
+            verify(reservaRepository, never()).saveAndFlush(any());
+        }
+
+        @Test
+        void usaLaConsultaQueExcluyeLaPropiaReserva() {
+            reservaDeAnaManana();
+            when(reservaRepository.existeSolapamientoExcluyendo(1L, instante(MANANA.atTime(10, 30)),
+                    instante(MANANA.atTime(11, 30)), ID)).thenReturn(true);
+
+            assertThatThrownBy(() -> service.modificar(ID,
+                    cambio(1L, MANANA.atTime(10, 30), MANANA.atTime(11, 30)), ANA, false))
+                    .isInstanceOf(ConflictoReservaException.class);
+            verify(reservaRepository, never()).existeSolapamiento(any(), any(), any());
+            verify(reservaRepository, never()).saveAndFlush(any());
+        }
+
+        @Test
+        void reservaDeUnaSerieLanza409() {
+            Reserva reserva = new Reserva(ana, sala, instante(MANANA.atTime(10, 0)), instante(MANANA.atTime(11, 0)),
+                    new SerieReserva(ana, sala, 4));
+            when(reservaRepository.findConDetalleById(ID)).thenReturn(Optional.of(reserva));
+
+            assertThatThrownBy(() -> service.modificar(ID,
+                    cambio(1L, MANANA.atTime(12, 0), MANANA.atTime(13, 0)), ANA, false))
+                    .isInstanceOf(ReservaNoModificableException.class)
+                    .hasMessage("Las reservas semanales no se pueden modificar");
+        }
+
+        @Test
+        void canceladaLanza409() {
+            reservaDeAnaManana().cancelar();
+
+            assertThatThrownBy(() -> service.modificar(ID,
+                    cambio(1L, MANANA.atTime(12, 0), MANANA.atTime(13, 0)), ANA, false))
+                    .isInstanceOf(ReservaNoModificableException.class)
+                    .hasMessage("La reserva ya está cancelada");
+        }
+
+        @Test
+        void yaEmpezadaLanza409() {
+            reservaDeAna(AHORA.minusMinutes(30), AHORA.plusMinutes(30));
+
+            assertThatThrownBy(() -> service.modificar(ID,
+                    cambio(1L, MANANA.atTime(12, 0), MANANA.atTime(13, 0)), "admin@mail.com", true))
+                    .isInstanceOf(ReservaNoModificableException.class)
+                    .hasMessage("La reserva ya comenzó o finalizó");
+        }
+
+        @Test
+        void clienteDentroDeLas2HorasLanzaFueraDePlazo() {
+            reservaDeAna(HOY.atTime(10, 30), HOY.atTime(11, 30));
+
+            assertThatThrownBy(() -> service.modificar(ID,
+                    cambio(1L, MANANA.atTime(12, 0), MANANA.atTime(13, 0)), ANA, false))
+                    .isInstanceOf(ModificacionFueraDePlazoException.class)
+                    .hasMessage("Solo se puede modificar hasta 2 horas antes del inicio");
+        }
+
+        @Test
+        void adminDentroDeLas2HorasPuedeModificar() {
+            reservaDeAna(HOY.atTime(10, 30), HOY.atTime(11, 30));
+
+            service.modificar(ID, cambio(1L, MANANA.atTime(12, 0), MANANA.atTime(13, 0)), "admin@mail.com", true);
+
+            ArgumentCaptor<ReservaModificadaEvent> captor = ArgumentCaptor.forClass(ReservaModificadaEvent.class);
+            verify(eventos).publishEvent(captor.capture());
+            assertThat(captor.getValue().porAdministrador()).isTrue();
+        }
+
+        @Test
+        void reservaAjenaLanza404() {
+            reservaDeAnaManana();
+
+            assertThatThrownBy(() -> service.modificar(ID,
+                    cambio(1L, MANANA.atTime(12, 0), MANANA.atTime(13, 0)), "beto@mail.com", false))
+                    .isInstanceOf(ReservaNoEncontradaException.class);
+        }
+
+        @Test
+        void recursoDestinoInactivoLanza404() {
+            reservaDeAnaManana();
+            ReflectionTestUtils.setField(sala2, "activo", false);
+
+            assertThatThrownBy(() -> service.modificar(ID,
+                    cambio(2L, MANANA.atTime(12, 0), MANANA.atTime(13, 0)), ANA, false))
+                    .isInstanceOf(RecursoNoEncontradoException.class);
+        }
+
+        @Test
+        void nuevoHorarioEnElPasadoLanza400() {
+            reservaDeAnaManana();
+
+            assertThatThrownBy(() -> service.modificar(ID,
+                    cambio(1L, HOY.atTime(8, 0), HOY.atTime(8, 30)), ANA, false))
+                    .isInstanceOf(ReservaInvalidaException.class);
+        }
+
+        @Test
+        void nuevoHorarioFueraDeAtencionLanza400() {
+            reservaDeAnaManana();
+
+            assertThatThrownBy(() -> service.modificar(ID,
+                    cambio(1L, MANANA.atTime(19, 30), MANANA.atTime(20, 30)), ANA, false))
+                    .isInstanceOf(ReservaInvalidaException.class);
+        }
+
+        @Test
+        void carreraContraElExcludeSeTraduceAConflicto() {
+            reservaDeAnaManana();
+            when(reservaRepository.saveAndFlush(any(Reserva.class))).thenThrow(new DataIntegrityViolationException(
+                    "exclusion", new SQLException("conflicto", "23P01")));
+
+            assertThatThrownBy(() -> service.modificar(ID,
+                    cambio(1L, MANANA.atTime(14, 0), MANANA.atTime(15, 0)), ANA, false))
+                    .isInstanceOf(ConflictoReservaException.class);
+            verify(eventos, never()).publishEvent(any());
+        }
+
+        @Test
+        void deadlockContraElExcludeSeTraduceAConflicto() {
+            // Con escrituras simultáneas sobre el EXCLUDE (GiST), PostgreSQL puede abortar con 40P01
+            // (deadlock) en vez de 23P01: para el usuario es lo mismo, el hueco ya no está libre.
+            reservaDeAnaManana();
+            when(reservaRepository.saveAndFlush(any(Reserva.class))).thenThrow(new CannotAcquireLockException(
+                    "deadlock", new SQLException("deadlock detected", "40P01")));
+
+            assertThatThrownBy(() -> service.modificar(ID,
+                    cambio(1L, MANANA.atTime(14, 0), MANANA.atTime(15, 0)), ANA, false))
+                    .isInstanceOf(ConflictoReservaException.class);
+        }
+
+        @Test
+        void esModificableFalsoParaSerieYVerdaderoParaIndividual() {
+            ReservaResponse.RecursoResumen recurso = new ReservaResponse.RecursoResumen(1L, "Sala Andes");
+            ReservaResponse individual = new ReservaResponse(ID, recurso, null, MANANA.atTime(10, 0),
+                    MANANA.atTime(11, 0), EstadoReserva.CONFIRMADA, null, null);
+            ReservaResponse deSerie = new ReservaResponse(6L, recurso, null, MANANA.atTime(10, 0),
+                    MANANA.atTime(11, 0), EstadoReserva.CONFIRMADA, null, 3L);
+
+            assertThat(service.esModificable(individual, false)).isTrue();
+            assertThat(service.esModificable(deSerie, false)).isFalse();
         }
     }
 }

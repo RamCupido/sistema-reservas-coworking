@@ -95,6 +95,13 @@ public class Reserva {
         this.estado = EstadoReserva.CANCELADA;
     }
 
+    /** Cambia espacio y horario. Las reglas (plazo, solapamiento, serie) las valida el service antes. */
+    public void reprogramar(Recurso recurso, Instant fechaInicio, Instant fechaFin) {
+        this.recurso = recurso;
+        this.fechaInicio = fechaInicio;
+        this.fechaFin = fechaFin;
+    }
+
     public boolean perteneceA(String email) {
         return usuario.getEmail().equals(email);
     }

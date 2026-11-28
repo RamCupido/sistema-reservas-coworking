@@ -32,6 +32,20 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long>, JpaSpec
                                @Param("inicio") Instant inicio,
                                @Param("fin") Instant fin);
 
+    /** Igual que {@link #existeSolapamiento}, sin contar la reserva que se está modificando. */
+    @Query("""
+            SELECT COUNT(r) > 0 FROM Reserva r
+            WHERE r.recurso.id = :recursoId
+              AND r.estado <> com.ramses.reservas.reserva.EstadoReserva.CANCELADA
+              AND r.fechaInicio < :fin
+              AND :inicio < r.fechaFin
+              AND r.id <> :reservaId
+            """)
+    boolean existeSolapamientoExcluyendo(@Param("recursoId") Long recursoId,
+                                         @Param("inicio") Instant inicio,
+                                         @Param("fin") Instant fin,
+                                         @Param("reservaId") Long reservaId);
+
     /** Reservas no canceladas que tocan el intervalo (para calcular la disponibilidad de un día). */
     @Query("""
             SELECT r FROM Reserva r

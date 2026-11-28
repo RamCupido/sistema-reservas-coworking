@@ -4,15 +4,18 @@ import com.ramses.reservas.common.dto.PaginaResponse;
 import com.ramses.reservas.common.exception.CancelacionFueraDePlazoException;
 import com.ramses.reservas.common.exception.ConflictoReservaException;
 import com.ramses.reservas.common.exception.FiltroInvalidoException;
+import com.ramses.reservas.common.exception.ModificacionFueraDePlazoException;
 import com.ramses.reservas.common.exception.RecursoNoEncontradoException;
 import com.ramses.reservas.common.exception.ReservaInvalidaException;
 import com.ramses.reservas.common.exception.ReservaNoCancelableException;
 import com.ramses.reservas.common.exception.ReservaNoEncontradaException;
+import com.ramses.reservas.common.exception.ReservaNoModificableException;
 import com.ramses.reservas.common.exception.UsuarioNoEncontradoException;
 import com.ramses.reservas.common.util.EmailUtils;
 import com.ramses.reservas.recurso.Recurso;
 import com.ramses.reservas.recurso.RecursoRepository;
 import com.ramses.reservas.reserva.dto.CrearReservaRequest;
+import com.ramses.reservas.reserva.dto.ModificarReservaRequest;
 import com.ramses.reservas.reserva.dto.ReservaResponse;
 import com.ramses.reservas.usuario.Usuario;
 import com.ramses.reservas.usuario.UsuarioRepository;
@@ -30,6 +33,7 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -41,6 +45,8 @@ public class ReservaService {
 
     /** SQLState de PostgreSQL para "exclusion_violation" (EXCLUDE USING gist). */
     private static final String SQLSTATE_EXCLUSION_VIOLATION = "23P01";
+    /** SQLState de PostgreSQL para "deadlock_detected": también ocurre con escrituras simultáneas sobre el EXCLUDE. */
+    private static final String SQLSTATE_DEADLOCK = "40P01";
     private static final int MINUTOS_BLOQUE = 30;
 
     private final ReservaRepository reservaRepository;
@@ -77,17 +83,7 @@ public class ReservaService {
             throw new ConflictoReservaException(recurso.getNombre());
         }
 
-        Reserva reserva = new Reserva(usuario, recurso, inicioUtc, finUtc);
-        Reserva guardada;
-        try {
-            // saveAndFlush fuerza el INSERT ahora (no al hacer commit) para poder traducir el error aquí.
-            guardada = reservaRepository.saveAndFlush(reserva);
-        } catch (DataIntegrityViolationException e) {
-            if (esViolacionDeSolapamiento(e)) {
-                throw new ConflictoReservaException(recurso.getNombre());
-            }
-            throw e;
-        }
+        Reserva guardada = guardarSinSolapamiento(new Reserva(usuario, recurso, inicioUtc, finUtc));
         // Se publica dentro de la transacción, pero el listener de correo solo actúa tras el
         // COMMIT (@TransactionalEventListener): si algo hiciera rollback, no se envía nada.
         eventos.publishEvent(new ReservaCreadaEvent(guardada.getId()));
@@ -113,6 +109,67 @@ public class ReservaService {
         boolean porAdministrador = esAdmin && !reserva.perteneceA(EmailUtils.normalizar(emailUsuario));
         eventos.publishEvent(new ReservaCanceladaEvent(reserva.getId(), porAdministrador));
         return reservaMapper.toResponse(reserva);
+    }
+
+    /**
+     * Cambia espacio, día y horario de una reserva individual. Mismas validaciones que {@link #crear},
+     * pero el solapamiento no cuenta la propia reserva (moverla media hora sobre sí misma es válido).
+     * La fila se actualiza (mismo id): el EXCLUDE de PostgreSQL no compara una fila consigo misma.
+     */
+    @Transactional
+    public ReservaResponse modificar(Long id, ModificarReservaRequest request, String emailUsuario, boolean esAdmin) {
+        Reserva reserva = buscarVisible(id, emailUsuario, esAdmin);
+        RuntimeException motivo = motivoNoModificable(reserva.getEstado(), reserva.getFechaInicio(),
+                reserva.getSerie() != null, esAdmin);
+        if (motivo != null) {
+            throw motivo;
+        }
+        Recurso recurso = recursoRepository.findById(request.recursoId())
+                .filter(Recurso::isActivo)
+                .orElseThrow(() -> new RecursoNoEncontradoException(request.recursoId()));
+        validarHorario(recurso, request.fechaInicio(), request.fechaFin());
+        Instant inicioUtc = aInstante(request.fechaInicio());
+        Instant finUtc = aInstante(request.fechaFin());
+        if (!inicioUtc.isAfter(Instant.now(clock))) {
+            throw new ReservaInvalidaException("No se puede reservar en el pasado");
+        }
+
+        ReservaResponse antes = reservaMapper.toResponse(reserva);
+        boolean sinCambios = antes.recurso().id().equals(recurso.getId())
+                && reserva.getFechaInicio().equals(inicioUtc) && reserva.getFechaFin().equals(finUtc);
+        if (sinCambios) {
+            return antes;
+        }
+        if (reservaRepository.existeSolapamientoExcluyendo(recurso.getId(), inicioUtc, finUtc, reserva.getId())) {
+            throw new ConflictoReservaException(recurso.getNombre());
+        }
+
+        reserva.reprogramar(recurso, inicioUtc, finUtc);
+        Reserva guardada = guardarSinSolapamiento(reserva);
+        // Tras el flush: el recordatorio ya enviado era del horario anterior, hay que volver a enviarlo.
+        reservaRepository.liberarRecordatorio(guardada.getId());
+        boolean porAdministrador = esAdmin && !reserva.perteneceA(EmailUtils.normalizar(emailUsuario));
+        eventos.publishEvent(new ReservaModificadaEvent(guardada.getId(), antes.recurso().nombre(),
+                antes.fechaInicio(), antes.fechaFin(), porAdministrador));
+        return reservaMapper.toResponse(guardada);
+    }
+
+    /** Para abrir la agenda en "modo modificar": la reserva si se puede modificar, o la excepción que lo impide. */
+    @Transactional(readOnly = true)
+    public ReservaResponse obtenerModificable(Long id, String emailUsuario, boolean esAdmin) {
+        Reserva reserva = buscarVisible(id, emailUsuario, esAdmin);
+        RuntimeException motivo = motivoNoModificable(reserva.getEstado(), reserva.getFechaInicio(),
+                reserva.getSerie() != null, esAdmin);
+        if (motivo != null) {
+            throw motivo;
+        }
+        return reservaMapper.toResponse(reserva);
+    }
+
+    /** Misma regla que {@link #modificar}, como pregunta: muestra u oculta el botón "Modificar". */
+    public boolean esModificable(ReservaResponse reserva, boolean esAdmin) {
+        return motivoNoModificable(reserva.estado(), aInstante(reserva.fechaInicio()), reserva.serieId() != null,
+                esAdmin) == null;
     }
 
     /**
@@ -237,14 +294,57 @@ public class ReservaService {
         return null;
     }
 
+    /**
+     * Regla para modificar: solo reservas individuales, con el mismo estado y plazo que para cancelar,
+     * pero con mensajes propios ("modificar", no "cancelar"). Devuelve la excepción o null.
+     */
+    private RuntimeException motivoNoModificable(EstadoReserva estado, Instant inicio, boolean enSerie,
+                                                 boolean esAdmin) {
+        if (enSerie) {
+            return new ReservaNoModificableException("Las reservas semanales no se pueden modificar");
+        }
+        Duration anticipacion = reservasProperties.anticipacionMinimaCancelacion();
+        RuntimeException motivo = motivoNoCancelable(estado, inicio, esAdmin, Instant.now(clock), anticipacion);
+        if (motivo instanceof CancelacionFueraDePlazoException) {
+            return new ModificacionFueraDePlazoException(anticipacion);
+        }
+        return motivo == null ? null : new ReservaNoModificableException(motivo.getMessage());
+    }
+
+    /**
+     * saveAndFlush fuerza el INSERT/UPDATE ahora (no al hacer commit) para poder traducir aquí
+     * la violación del EXCLUDE (dos peticiones simultáneas por el mismo hueco) a un 409.
+     * Con escrituras simultáneas, PostgreSQL puede abortar con un deadlock en vez de 23P01:
+     * para el usuario es lo mismo (el hueco ya no está libre), así que también es un 409.
+     */
+    private Reserva guardarSinSolapamiento(Reserva reserva) {
+        try {
+            return reservaRepository.saveAndFlush(reserva);
+        } catch (DataIntegrityViolationException e) {
+            if (esViolacionDeSolapamiento(e)) {
+                throw new ConflictoReservaException(reserva.getRecurso().getNombre());
+            }
+            throw e;
+        } catch (PessimisticLockingFailureException e) {
+            if (tieneSqlState(e, SQLSTATE_DEADLOCK)) {
+                throw new ConflictoReservaException(reserva.getRecurso().getNombre());
+            }
+            throw e;
+        }
+    }
+
     private static boolean alineadoABloque(LocalTime hora) {
         return hora.getMinute() % MINUTOS_BLOQUE == 0 && hora.getSecond() == 0 && hora.getNano() == 0;
     }
 
     /** Recorre la cadena de causas buscando el SQLException original de PostgreSQL. */
     static boolean esViolacionDeSolapamiento(Throwable error) {
+        return tieneSqlState(error, SQLSTATE_EXCLUSION_VIOLATION);
+    }
+
+    private static boolean tieneSqlState(Throwable error, String sqlState) {
         for (Throwable causa = error; causa != null; causa = causa.getCause()) {
-            if (causa instanceof SQLException sql && SQLSTATE_EXCLUSION_VIOLATION.equals(sql.getSQLState())) {
+            if (causa instanceof SQLException sql && sqlState.equals(sql.getSQLState())) {
                 return true;
             }
         }
