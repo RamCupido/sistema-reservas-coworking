@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class DisponibilidadServiceTest {
 
@@ -66,6 +67,19 @@ class DisponibilidadServiceTest {
         assertThat(respuesta.bloques().getFirst().inicio()).isEqualTo(LocalTime.of(9, 0));
         assertThat(respuesta.bloques().getLast().fin()).isEqualTo(LocalTime.of(12, 0));
         assertThat(libres(respuesta)).hasSize(6);
+    }
+
+    @Test
+    void reservaIgnoradaApareceComoLibre() {
+        Reserva propia = reserva(MANANA.atTime(10, 0), MANANA.atTime(11, 0));
+        ReflectionTestUtils.setField(propia, "id", 7L);
+        Reserva ajena = reserva(MANANA.atTime(11, 0), MANANA.atTime(11, 30));
+        ReflectionTestUtils.setField(ajena, "id", 8L);
+        when(reservaRepository.findNoCanceladasEnRango(eq(1L), any(), any())).thenReturn(List.of(propia, ajena));
+
+        assertThat(libres(service.calcular(1L, MANANA, 7L)))
+                .containsExactly("09:00", "09:30", "10:00", "10:30", "11:30");
+        assertThat(libres(service.calcular(1L, MANANA))).containsExactly("09:00", "09:30", "11:30");
     }
 
     @Test

@@ -35,6 +35,15 @@ public class DisponibilidadService {
      */
     @Transactional(readOnly = true)
     public DisponibilidadResponse calcular(Long recursoId, LocalDate fecha) {
+        return calcular(recursoId, fecha, null);
+    }
+
+    /**
+     * Igual, pero sin contar la reserva {@code reservaIgnorada} (puede ser null): al modificar una reserva,
+     * sus propios bloques deben aparecer libres para poder moverla o alargarla sobre su horario actual.
+     */
+    @Transactional(readOnly = true)
+    public DisponibilidadResponse calcular(Long recursoId, LocalDate fecha, Long reservaIgnorada) {
         Recurso recurso = recursoRepository.findById(recursoId)
                 .filter(Recurso::isActivo)
                 .orElseThrow(() -> new RecursoNoEncontradoException(recursoId));
@@ -42,7 +51,9 @@ public class DisponibilidadService {
         ZoneId zona = reservasProperties.zonaHoraria();
         Instant apertura = fecha.atTime(recurso.getHoraApertura()).atZone(zona).toInstant();
         Instant cierre = fecha.atTime(recurso.getHoraCierre()).atZone(zona).toInstant();
-        List<Reserva> ocupadas = reservaRepository.findNoCanceladasEnRango(recursoId, apertura, cierre);
+        List<Reserva> ocupadas = reservaRepository.findNoCanceladasEnRango(recursoId, apertura, cierre).stream()
+                .filter(r -> reservaIgnorada == null || !reservaIgnorada.equals(r.getId()))
+                .toList();
         Instant ahora = Instant.now(clock);
 
         List<Bloque> bloques = new ArrayList<>();
