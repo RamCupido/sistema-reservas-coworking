@@ -4,6 +4,7 @@ import static com.ramses.reservas.common.util.SeguridadUtils.esAdmin;
 
 import com.ramses.reservas.common.dto.PaginaResponse;
 import com.ramses.reservas.reserva.dto.CrearReservaRequest;
+import com.ramses.reservas.reserva.dto.ModificarReservaRequest;
 import com.ramses.reservas.reserva.dto.ReservaResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -32,7 +34,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RestController
 @RequestMapping("/api/v1/reservas")
 @RequiredArgsConstructor
-@Tag(name = "Reservas", description = "Crear, consultar y cancelar reservas del usuario autenticado")
+@Tag(name = "Reservas", description = "Crear, consultar, modificar y cancelar reservas del usuario autenticado")
 @SecurityRequirement(name = "bearerAuth")
 public class ReservaController {
 
@@ -62,6 +64,15 @@ public class ReservaController {
     @Operation(summary = "Detalle de una reserva propia (ADMIN: cualquiera)")
     public ReservaResponse obtener(@PathVariable Long id, @Parameter(hidden = true) Authentication authentication) {
         return reservaService.obtener(id, authentication.getName(), esAdmin(authentication));
+    }
+
+    /** PUT: se envía el estado completo nuevo (espacio + horario). La reserva conserva su id. */
+    @PutMapping("/{id}")
+    @Operation(summary = "Modificar espacio, día u horario de una reserva individual "
+            + "(cliente: propia y hasta 2 h antes; ADMIN: cualquiera)")
+    public ReservaResponse modificar(@PathVariable Long id, @Valid @RequestBody ModificarReservaRequest request,
+                                     @Parameter(hidden = true) Authentication authentication) {
+        return reservaService.modificar(id, request, authentication.getName(), esAdmin(authentication));
     }
 
     /** PATCH (no DELETE): la reserva no se borra, cambia de estado y queda en el historial. */

@@ -1,11 +1,13 @@
 package com.ramses.reservas.reserva;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,6 +18,7 @@ import com.ramses.reservas.LimpiadorBaseDatos;
 import com.ramses.reservas.recurso.Recurso;
 import com.ramses.reservas.recurso.RecursoRepository;
 import com.ramses.reservas.recurso.TipoRecurso;
+import com.ramses.reservas.reserva.dto.CrearSerieRequest;
 import com.ramses.reservas.usuario.Rol;
 import com.ramses.reservas.usuario.Usuario;
 import com.ramses.reservas.usuario.UsuarioRepository;
@@ -30,6 +33,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
@@ -319,6 +323,123 @@ class ReservaControllerIntegrationTest {
             mockMvc.perform(get("/api/v1/admin/reservas")
                             .param("desde", "2026-12-31").param("hasta", "2026-12-01").with(admin()))
                     .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    class Modificar {
+
+        @Autowired
+        private SerieReservaService serieService;
+        @Autowired
+        private JdbcTemplate jdbcTemplate;
+
+        private ResultActions modificar(JwtRequestPostProcessor usuario, long id, Long recursoId, LocalDate nuevoDia,
+                                        String inicio, String fin) throws Exception {
+            String body = """
+                    {"recursoId": %s, "fechaInicio": "%sT%s", "fechaFin": "%sT%s"}
+                    """.formatted(recursoId, nuevoDia, inicio, nuevoDia, fin);
+            return mockMvc.perform(put(RESERVAS + "/" + id).with(usuario)
+                    .contentType(MediaType.APPLICATION_JSON).content(body));
+        }
+
+        private Recurso otraSala() {
+            return recursoRepository.save(Recurso.builder().nombre("Sala Pacífico").tipo(TipoRecurso.SALA_REUNIONES)
+                    .capacidad(6).activo(true)
+                    .horaApertura(LocalTime.of(8, 0)).horaCierre(LocalTime.of(20, 0)).build());
+        }
+
+        @Test
+        void modificarPropiaDevuelve200YCambiaLosDatos() throws Exception {
+            long id = crearReserva(ANA, "10:00", "11:00");
+            Recurso pacifico = otraSala();
+            LocalDate nuevoDia = dia.plusDays(2);
+
+            modificar(cliente(ANA), id, pacifico.getId(), nuevoDia, "15:00", "16:30")
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(id))
+                    .andExpect(jsonPath("$.recurso.id").value(pacifico.getId()))
+                    .andExpect(jsonPath("$.fechaInicio").value(nuevoDia + "T15:00"))
+                    .andExpect(jsonPath("$.fechaFin").value(nuevoDia + "T16:30"))
+                    .andExpect(jsonPath("$.estado").value("CONFIRMADA"));
+
+            Reserva enBd = reservaRepository.findConDetalleById(id).orElseThrow();
+            assertThat(enBd.getRecurso().getId()).isEqualTo(pacifico.getId());
+            assertThat(enBd.getEstado()).isEqualTo(EstadoReserva.CONFIRMADA);
+            assertThat(reservaRepository.count()).isEqualTo(1);
+        }
+
+        @Test
+        void modificarSolapandoSuPropioHorarioAnterior() throws Exception {
+            long id = crearReserva(ANA, "10:00", "11:00");
+
+            modificar(cliente(ANA), id, sala.getId(), dia, "10:30", "11:30")
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.fechaInicio").value(dia + "T10:30"));
+        }
+
+        @Test
+        void modificarAHuecoOcupadoPorOtroDevuelve409() throws Exception {
+            long id = crearReserva(ANA, "10:00", "11:00");
+            crearReserva(BETO, "12:00", "13:00");
+
+            modificar(cliente(ANA), id, sala.getId(), dia, "12:30", "13:30")
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.title").value("Horario no disponible"));
+        }
+
+        @Test
+        void modificarAjenaDevuelve404() throws Exception {
+            long id = crearReserva(ANA, "10:00", "11:00");
+
+            modificar(cliente(BETO), id, sala.getId(), dia, "12:00", "13:00")
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void adminModificaReservaAjena() throws Exception {
+            long id = crearReserva(ANA, "10:00", "11:00");
+
+            modificar(admin(), id, sala.getId(), dia, "12:00", "13:00")
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.usuario.email").value(ANA));
+        }
+
+        @Test
+        void sinTokenDevuelve401() throws Exception {
+            mockMvc.perform(put(RESERVAS + "/1").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        void modificarReservaDeSerieDevuelve409() throws Exception {
+            long id = serieService.crear(new CrearSerieRequest(sala.getId(), dia.atTime(9, 0), dia.atTime(10, 0), 2),
+                    ANA).reservas().getFirst().id();
+
+            modificar(cliente(ANA), id, sala.getId(), dia, "12:00", "13:00")
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail").value("Las reservas semanales no se pueden modificar"));
+        }
+
+        @Test
+        void cuerpoSinRecursoDevuelve400() throws Exception {
+            long id = crearReserva(ANA, "10:00", "11:00");
+
+            modificar(cliente(ANA), id, null, dia, "12:00", "13:00")
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void modificarReiniciaElRecordatorio() throws Exception {
+            long id = crearReserva(ANA, "10:00", "11:00");
+            jdbcTemplate.update("UPDATE reservas SET recordatorio_enviado_en = now() WHERE id = ?", id);
+
+            modificar(cliente(ANA), id, sala.getId(), dia.plusDays(1), "10:00", "11:00")
+                    .andExpect(status().isOk());
+
+            Instant recordatorio = jdbcTemplate.queryForObject(
+                    "SELECT recordatorio_enviado_en FROM reservas WHERE id = ?", Instant.class, id);
+            assertThat(recordatorio).isNull();
         }
     }
 }
