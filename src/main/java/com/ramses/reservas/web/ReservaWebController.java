@@ -89,6 +89,34 @@ public class ReservaWebController {
     }
 
     /**
+     * Guarda el cambio hecho en la agenda en "modo modificar". Si falla (hueco ocupado, fuera de plazo...),
+     * vuelve a la misma agenda y día, sin salir del modo modificar.
+     */
+    @PostMapping("/mis-reservas/{id}/modificar")
+    public String modificar(@PathVariable Long id, @ModelAttribute ReservaForm form, BindingResult resultado,
+                            Authentication authentication, RedirectAttributes flash) {
+        String volver = form.getRecursoId() == null ? "redirect:/mis-reservas"
+                : Urls.redirect("/recursos/" + form.getRecursoId(), "fecha", form.getFecha(), "modificar", id);
+
+        validador.validar(form.toModificarRequest(), resultado);
+        if (resultado.hasErrors()) {
+            flash.addFlashAttribute("error", primerError(resultado));
+            return volver;
+        }
+        try {
+            ReservaResponse modificada = reservaService.modificar(id, form.toModificarRequest(),
+                    authentication.getName(), esAdmin(authentication));
+            flash.addFlashAttribute("exito", "Reserva modificada: " + modificada.recurso().nombre() + ", "
+                    + modificada.fechaInicio().format(FORMATO));
+            flash.addFlashAttribute("reservaModificada", modificada.id());
+            return Urls.redirect("/mis-reservas", "mes", YearMonth.from(modificada.fechaInicio()));
+        } catch (ReglaNegocioException | ConflictoException e) {
+            flash.addFlashAttribute("error", e.getMessage());
+            return volver;
+        }
+    }
+
+    /**
      * Dos vistas de la misma página:
      * <ul>
      *   <li>calendario (por defecto): un mes, con la agenda de ese mes debajo;</li>
@@ -112,6 +140,7 @@ public class ReservaWebController {
             model.addAttribute("vista", VISTA_LISTA);
             model.addAttribute("pagina", pagina);
             model.addAttribute("cancelables", cancelables(pagina.content(), admin));
+            model.addAttribute("modificables", modificables(pagina.content(), admin));
             model.addAttribute("estados", EstadoReserva.values());
             model.addAttribute("estadoSeleccionado", estado);
             model.addAttribute("urlPagina", Urls.conParametros("/mis-reservas", "vista", VISTA_LISTA, "estado", estado));
@@ -124,6 +153,7 @@ public class ReservaWebController {
         model.addAttribute("vista", VISTA_CALENDARIO);
         model.addAttribute("calendario", CalendarioMensual.construir(mesVisible, hoy, reservas));
         model.addAttribute("cancelables", cancelables(reservas, admin));
+        model.addAttribute("modificables", modificables(reservas, admin));
         model.addAttribute("mesAnterior", mesVisible.minusMonths(1));
         model.addAttribute("mesSiguiente", mesVisible.plusMonths(1));
         model.addAttribute("esMesActual", mesVisible.equals(YearMonth.from(hoy)));
@@ -175,6 +205,14 @@ public class ReservaWebController {
     private Set<Long> cancelables(Collection<ReservaResponse> reservas, boolean esAdmin) {
         return reservas.stream()
                 .filter(reserva -> reservaService.esCancelable(reserva, esAdmin))
+                .map(ReservaResponse::id)
+                .collect(Collectors.toSet());
+    }
+
+    /** Ids de las reservas que muestran el botón "Modificar" (misma regla que el service). */
+    private Set<Long> modificables(Collection<ReservaResponse> reservas, boolean esAdmin) {
+        return reservas.stream()
+                .filter(reserva -> reservaService.esModificable(reserva, esAdmin))
                 .map(ReservaResponse::id)
                 .collect(Collectors.toSet());
     }

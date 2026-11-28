@@ -10,7 +10,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 cabecera-pagina">
         <div>
             <h1 class="h2 mb-1">Mis reservas</h1>
-            <p>Tu calendario de espacios reservados. Puedes cancelar hasta 2 horas antes del inicio.</p>
+            <p>Tu calendario de espacios reservados. Puedes modificar o cancelar hasta 2 horas antes del inicio.</p>
         </div>
         <div class="d-flex gap-2">
             <!--/* Pestañas: misma página, dos vistas (?vista=calendario | lista) */-->
@@ -119,8 +119,11 @@
                             <span th:replace="~{fragments/estado :: semanal(${r.serieId})}"></span>
                             <span class="badge text-bg-primary"
                                   th:if="${r.id == reservaNueva or (r.serieId != null and r.serieId == serieNueva)}">Nueva</span>
-                            <div class="ms-auto d-flex gap-2" th:if="${cancelables.contains(r.id)}">
-                                <form method="post" class="m-0" th:action="@{/mis-reservas/{id}/cancelar(id=${r.id})}"
+                            <span class="badge text-bg-primary" th:if="${r.id == reservaModificada}">Modificada</span>
+                            <div class="ms-auto d-flex gap-2" th:if="${cancelables.contains(r.id) or modificables.contains(r.id)}">
+                                <a th:if="${modificables.contains(r.id)}" class="btn btn-outline-primary btn-sm"
+                                   th:href="@{/recursos/{id}(id=${r.recurso.id}, fecha=${d.fecha}, modificar=${r.id})}">Modificar</a>
+                                <form th:if="${cancelables.contains(r.id)}" method="post" class="m-0" th:action="@{/mis-reservas/{id}/cancelar(id=${r.id})}"
                                       onsubmit="return confirm('¿Cancelar esta reserva?')">
                                     <input type="hidden" name="mes" th:value="${mes}">
                                     <button type="submit" class="btn btn-outline-danger btn-sm"
@@ -175,10 +178,13 @@
                         <td>
                             <span th:replace="~{fragments/estado :: badge(${r.estado})}"></span>
                             <span th:replace="~{fragments/estado :: semanal(${r.serieId})}"></span>
+                            <span class="badge text-bg-primary" th:if="${r.id == reservaModificada}">Modificada</span>
                         </td>
                         <td class="text-end">
-                            <div class="d-inline-flex flex-wrap justify-content-end gap-2" th:if="${cancelables.contains(r.id)}">
-                                <form method="post" class="m-0" th:action="@{/mis-reservas/{id}/cancelar(id=${r.id})}"
+                            <div class="d-inline-flex flex-wrap justify-content-end gap-2" th:if="${cancelables.contains(r.id) or modificables.contains(r.id)}">
+                                <a th:if="${modificables.contains(r.id)}" class="btn btn-outline-primary btn-sm"
+                                   th:href="@{/recursos/{id}(id=${r.recurso.id}, fecha=${r.fechaInicio.toLocalDate()}, modificar=${r.id})}">Modificar</a>
+                                <form th:if="${cancelables.contains(r.id)}" method="post" class="m-0" th:action="@{/mis-reservas/{id}/cancelar(id=${r.id})}"
                                       onsubmit="return confirm('¿Cancelar esta reserva?')">
                                     <input type="hidden" name="vista" value="lista">
                                     <input type="hidden" name="estado" th:value="${estadoSeleccionado}" th:if="${estadoSeleccionado != null}">

@@ -5,10 +5,23 @@
 <body>
 <nav th:replace="~{fragments/layout :: navbar('espacios')}"></nav>
 
-<main class="container pt-4" th:with="fecha=${disponibilidad.fecha}">
+<main class="container pt-4" th:with="fecha=${disponibilidad.fecha}, idModificar=${modificando?.id}">
     <div th:replace="~{fragments/layout :: alertas}"></div>
 
-    <a th:href="@{/} + '#espacios'" class="small text-decoration-none d-inline-flex align-items-center gap-1">
+    <!--/* Modo modificar: se está cambiando una reserva existente, no creando otra. */-->
+    <div th:if="${modificando != null}" class="alert alert-primary d-flex flex-wrap align-items-center gap-2" role="status">
+        <svg th:replace="~{fragments/iconos :: icono('calendario', '')}"></svg>
+        <span>Estás modificando tu reserva:
+            <strong th:text="${modificando.recurso.nombre} + ', ' + ${#temporals.format(modificando.fechaInicio, 'dd/MM HH:mm')}
+                + '–' + ${#temporals.format(modificando.fechaFin, 'HH:mm')}">Sala Andes, 03/12 10:00–11:00</strong>.
+            Elige el nuevo día y horario.</span>
+        <span class="ms-auto d-flex gap-2">
+            <a class="btn btn-sm btn-outline-primary" th:href="@{/(modificar=${idModificar})} + '#espacios'">Cambiar espacio</a>
+            <a class="btn btn-sm btn-outline-secondary" th:href="@{/mis-reservas}">Cancelar cambio</a>
+        </span>
+    </div>
+
+    <a th:href="(${idModificar != null} ? @{/(modificar=${idModificar})} : @{/}) + '#espacios'" class="small text-decoration-none d-inline-flex align-items-center gap-1">
         <svg th:replace="~{fragments/iconos :: icono('izquierda', '')}"></svg> Todos los espacios
     </a>
     <div class="d-flex flex-wrap align-items-center gap-3 mt-3 mb-4">
@@ -40,15 +53,20 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3 border-bottom">
                     <a class="btn btn-outline-secondary btn-sm"
                        th:classappend="${!fecha.isAfter(hoy)} ? 'disabled'"
-                       th:href="@{/recursos/{id}(id=${recurso.id}, fecha=${fecha.minusDays(1)})}">&larr; Anterior</a>
+                       th:href="${idModificar != null}
+                           ? @{/recursos/{id}(id=${recurso.id}, fecha=${fecha.minusDays(1)}, modificar=${idModificar})}
+                           : @{/recursos/{id}(id=${recurso.id}, fecha=${fecha.minusDays(1)})}">&larr; Anterior</a>
                     <form method="get" class="d-flex gap-2 align-items-center"
                           th:action="@{/recursos/{id}(id=${recurso.id})}">
                         <label for="fecha" class="visually-hidden">Fecha</label>
+                        <input type="hidden" name="modificar" th:if="${idModificar != null}" th:value="${idModificar}">
                         <input type="date" id="fecha" name="fecha" class="form-control form-control-sm"
                                th:value="${fecha}" th:min="${hoy}" onchange="this.form.submit()">
                     </form>
                     <a class="btn btn-outline-secondary btn-sm"
-                       th:href="@{/recursos/{id}(id=${recurso.id}, fecha=${fecha.plusDays(1)})}">Siguiente &rarr;</a>
+                       th:href="${idModificar != null}
+                           ? @{/recursos/{id}(id=${recurso.id}, fecha=${fecha.plusDays(1)}, modificar=${idModificar})}
+                           : @{/recursos/{id}(id=${recurso.id}, fecha=${fecha.plusDays(1)})}">Siguiente &rarr;</a>
                 </div>
                 <div class="p-3 p-md-4">
                     <p class="fw-semibold capitalizar mb-3"
@@ -56,12 +74,13 @@
                     <div class="agenda" id="agenda">
                         <!--/* data-*: el JS lee los bloques para validar rangos contiguos en el navegador. */-->
                         <button type="button" th:each="b : ${disponibilidad.bloques}"
-                                class="bloque" th:classappend="${b.disponible} ? 'libre' : 'ocupado'"
+                                th:with="actual=${bloquesActuales.contains(b.inicio)}"
+                                class="bloque" th:classappend="(${b.disponible} ? 'libre' : 'ocupado') + (${actual} ? ' actual' : '')"
                                 th:disabled="${!b.disponible}"
                                 th:attr="data-inicio=${#temporals.format(b.inicio, 'HH:mm')},
                                          data-fin=${#temporals.format(b.fin, 'HH:mm')},
                                          data-libre=${b.disponible}"
-                                th:title="${b.disponible} ? 'Libre' : 'No disponible'">
+                                th:title="${actual} ? 'Tu reserva actual' : (${b.disponible} ? 'Libre' : 'No disponible')">
                             <span th:text="${#temporals.format(b.inicio, 'HH:mm')}">10:00</span>
                         </button>
                     </div>
@@ -69,6 +88,7 @@
                         <span><span class="leyenda libre"></span> Libre</span>
                         <span><span class="leyenda ocupado"></span> Ocupado o pasado</span>
                         <span><span class="leyenda seleccionado"></span> Tu selección</span>
+                        <span th:if="${!bloquesActuales.isEmpty()}"><span class="leyenda actual"></span> Tu reserva actual</span>
                     </div>
                 </div>
             </div>
@@ -78,7 +98,7 @@
         <aside class="col-lg-4">
             <div class="tarjeta lateral-fijo">
                 <div class="p-3 p-md-4">
-                    <h2 class="h5 mb-3">Reservar</h2>
+                    <h2 class="h5 mb-3" th:text="${modificando != null} ? 'Nuevo horario' : 'Reservar'">Reservar</h2>
 
                     <div sec:authorize="!isAuthenticated()">
                         <p class="text-body-secondary small">Necesitas una cuenta gratuita para reservar.</p>
@@ -87,7 +107,8 @@
                     </div>
 
                     <form sec:authorize="isAuthenticated()" id="form-reserva" method="post"
-                          th:action="@{/reservas}" th:object="${reserva}">
+                          th:action="${modificando != null} ? @{/mis-reservas/{id}/modificar(id=${idModificar})} : @{/reservas}"
+                          th:object="${reserva}">
                         <input type="hidden" th:field="*{recursoId}">
                         <input type="hidden" th:field="*{fecha}">
 
@@ -115,7 +136,7 @@
                             </div>
                         </div>
                         <!--/* Reserva semanal: "lunes" → "Todos los lunes"; "sábado" → "Todos los sábados" */-->
-                        <div class="mb-3" th:with="dia=${#temporals.format(fecha, 'EEEE')},
+                        <div class="mb-3" th:if="${modificando == null}" th:with="dia=${#temporals.format(fecha, 'EEEE')},
                                                    plural=${#strings.endsWith(dia, 's') ? dia : dia + 's'}">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" role="switch" id="repetir"
@@ -138,9 +159,14 @@
                             <div class="text-body-secondary">Tu selección</div>
                             <div class="fw-semibold" id="resumen-seleccion">Elige un horario en la agenda</div>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100" id="boton-reservar">Confirmar reserva</button>
-                        <p class="form-text mt-2 mb-0">
+                        <button type="submit" class="btn btn-primary w-100" id="boton-reservar"
+                                th:with="texto=${modificando != null} ? 'Guardar cambios' : 'Confirmar reserva'"
+                                th:attr="data-texto=${texto}" th:text="${texto}">Confirmar reserva</button>
+                        <p class="form-text mt-2 mb-0" th:if="${modificando == null}">
                             Recibirás la confirmación por correo. Puedes cancelar hasta 2 horas antes del inicio.
+                        </p>
+                        <p class="form-text mt-2 mb-0" th:if="${modificando != null}">
+                            Recibirás un correo con los cambios.
                         </p>
                     </form>
                 </div>

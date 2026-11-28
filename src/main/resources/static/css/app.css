@@ -387,6 +387,12 @@ h1, h2, h3, .h1, .h2, .h3, .display-5 {
     color: #fff;
 }
 
+/* Modo modificar: bloques que ocupa la reserva que se está cambiando (siguen siendo seleccionables). */
+.bloque.actual {
+    outline: 2px dashed var(--marca);
+    outline-offset: -3px;
+}
+
 .leyenda {
     display: inline-block;
     width: .9rem;
@@ -399,6 +405,7 @@ h1, h2, h3, .h1, .h2, .h3, .display-5 {
 .leyenda.libre { background-color: var(--bs-success-bg-subtle); }
 .leyenda.ocupado { background-color: var(--bs-secondary-bg); }
 .leyenda.seleccionado { background-color: var(--marca); }
+.leyenda.actual { outline: 2px dashed var(--marca); outline-offset: -3px; }
 
 @media (min-width: 992px) {
     .lateral-fijo {

@@ -2,6 +2,7 @@ package com.ramses.reservas.web.form;
 
 import com.ramses.reservas.reserva.dto.CrearReservaRequest;
 import com.ramses.reservas.reserva.dto.CrearSerieRequest;
+import com.ramses.reservas.reserva.dto.ModificarReservaRequest;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -38,6 +39,10 @@ public class ReservaForm {
 
     public CrearSerieRequest toSerieRequest() {
         return new CrearSerieRequest(recursoId, combinar(fecha, horaInicio), combinar(fecha, horaFin), semanas);
+    }
+
+    public ModificarReservaRequest toModificarRequest() {
+        return new ModificarReservaRequest(recursoId, combinar(fecha, horaInicio), combinar(fecha, horaFin));
     }
 
     private static LocalDateTime combinar(LocalDate dia, LocalTime hora) {

@@ -154,6 +154,14 @@
     <section class="pt-4" sec:authorize="isAuthenticated()">
         <div class="container">
             <div th:replace="~{fragments/layout :: alertas}"></div>
+            <!--/* Modo modificar: se llega desde "Cambiar espacio" en la agenda. */-->
+            <div th:if="${modificando != null}" class="alert alert-primary d-flex flex-wrap align-items-center gap-2" role="status">
+                <svg th:replace="~{fragments/iconos :: icono('calendario', '')}"></svg>
+                <span>Elige el nuevo espacio para tu reserva de
+                    <strong th:text="${modificando.recurso.nombre} + ', ' + ${#temporals.format(modificando.fechaInicio, 'dd/MM HH:mm')}
+                        + '–' + ${#temporals.format(modificando.fechaFin, 'HH:mm')}">Sala Andes, 03/12 10:00–11:00</strong>.</span>
+                <a class="btn btn-sm btn-outline-secondary ms-auto" th:href="@{/mis-reservas}">Cancelar cambio</a>
+            </div>
             <div class="row g-4 align-items-stretch mb-2">
                 <div class="col-lg-7 d-flex flex-column justify-content-center">
                     <h1 class="h2 mb-1" th:text="${nombreUsuario != null} ? 'Hola, ' + ${nombreUsuario} : 'Hola'">Hola, Ana</h1>
@@ -188,7 +196,8 @@
     </section>
 
     <!--/* ===================== Catálogo (para todos) ===================== */-->
-    <section id="espacios" class="seccion pt-5" style="scroll-margin-top: 4rem">
+    <section id="espacios" class="seccion pt-5" style="scroll-margin-top: 4rem"
+             th:with="idModificar=${modificando?.id}, diaModificar=${modificando?.fechaInicio?.toLocalDate()}">
         <div class="container">
             <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 cabecera-pagina">
                 <div>
@@ -196,9 +205,9 @@
                     <p>Elige un espacio para ver su agenda y reservar.</p>
                 </div>
                 <div class="filtros d-flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo">
-                    <a class="btn btn-sm" th:href="@{/} + '#espacios'"
+                    <a class="btn btn-sm" th:href="(${idModificar != null} ? @{/(modificar=${idModificar})} : @{/}) + '#espacios'"
                        th:classappend="${tipoSeleccionado == null} ? 'btn-primary' : 'btn-outline-secondary'">Todos</a>
-                    <a th:each="t : ${tipos}" class="btn btn-sm" th:href="@{/(tipo=${t})} + '#espacios'"
+                    <a th:each="t : ${tipos}" class="btn btn-sm" th:href="(${idModificar != null} ? @{/(tipo=${t}, modificar=${idModificar})} : @{/(tipo=${t})}) + '#espacios'"
                        th:classappend="${tipoSeleccionado == t} ? 'btn-primary' : 'btn-outline-secondary'"
                        th:text="${#messages.msg('tipo.' + t)}">Tipo</a>
                 </div>
@@ -212,7 +221,8 @@
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
                 <div class="col" th:each="r : ${pagina.content}">
                     <a class="tarjeta tarjeta-hover d-flex flex-column h-100 p-4 text-decoration-none text-body"
-                       th:href="@{/recursos/{id}(id=${r.id})}">
+                       th:href="${idModificar != null} ? @{/recursos/{id}(id=${r.id}, fecha=${diaModificar}, modificar=${idModificar})}
+                                : @{/recursos/{id}(id=${r.id})}">
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <span class="icono-tipo" th:classappend="'tipo-' + ${r.tipo}">
                                 <svg th:replace="~{fragments/iconos :: tipo(${r.tipo}, 'icono-lg')}"></svg>

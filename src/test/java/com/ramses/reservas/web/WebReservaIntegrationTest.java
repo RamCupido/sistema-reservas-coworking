@@ -22,7 +22,9 @@ import com.ramses.reservas.recurso.TipoRecurso;
 import com.ramses.reservas.reserva.EstadoReserva;
 import com.ramses.reservas.reserva.ReservaRepository;
 import com.ramses.reservas.reserva.ReservaService;
+import com.ramses.reservas.reserva.SerieReservaService;
 import com.ramses.reservas.reserva.dto.CrearReservaRequest;
+import com.ramses.reservas.reserva.dto.CrearSerieRequest;
 import com.ramses.reservas.reserva.dto.DisponibilidadResponse;
 import com.ramses.reservas.reserva.dto.ReservaResponse;
 import com.ramses.reservas.usuario.Rol;
@@ -327,6 +329,144 @@ class WebReservaIntegrationTest {
                             .param("confirmarPassword", "secreta123"))
                     .andExpect(status().isOk())
                     .andExpect(model().attributeHasFieldErrorCode("registro", "email", "duplicado"));
+        }
+    }
+
+    @Nested
+    class Modificar {
+
+        @Autowired
+        private SerieReservaService serieService;
+
+        private ReservaResponse deSerie() {
+            return serieService.crear(new CrearSerieRequest(sala.getId(), dia.atTime(16, 0), dia.atTime(17, 0), 2), ANA)
+                    .reservas().getFirst();
+        }
+
+        private String agendaModificando(ReservaResponse reserva) {
+            return "/recursos/" + sala.getId() + "?fecha=" + dia + "&modificar=" + reserva.id();
+        }
+
+        private MockHttpServletRequestBuilder formularioModificar(long id, LocalDate nuevoDia, String inicio,
+                                                                  String fin) {
+            return post("/mis-reservas/{id}/modificar", id).with(user(ANA)).with(csrf())
+                    .param("recursoId", sala.getId().toString())
+                    .param("fecha", nuevoDia.toString())
+                    .param("horaInicio", inicio)
+                    .param("horaFin", fin);
+        }
+
+        @Test
+        void misReservasMuestraModificarSoloEnIndividualesModificables() throws Exception {
+            ReservaResponse individual = reservaDe(ANA, 10, 11);
+            ReservaResponse semanal = deSerie();
+
+            mockMvc.perform(get("/mis-reservas").param("mes", YearMonth.from(dia).toString()).with(user(ANA)))
+                    .andExpect(status().isOk())
+                    .andExpect(model().attribute("modificables", Set.of(individual.id())))
+                    .andExpect(content().string(containsString("modificar=" + individual.id())))
+                    .andExpect(content().string(not(containsString("modificar=" + semanal.id()))));
+
+            mockMvc.perform(get("/mis-reservas").param("vista", "lista").with(user(ANA)))
+                    .andExpect(model().attribute("modificables", Set.of(individual.id())))
+                    .andExpect(content().string(containsString("modificar=" + individual.id())));
+        }
+
+        @Test
+        void agendaEnModoModificarMuestraBannerYOcultaRepetir() throws Exception {
+            ReservaResponse reserva = reservaDe(ANA, 10, 11);
+
+            var resultado = mockMvc.perform(get(agendaModificando(reserva)).with(user(ANA)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("Estás modificando tu reserva")))
+                    .andExpect(content().string(containsString("Guardar cambios")))
+                    .andExpect(content().string(containsString("/mis-reservas/" + reserva.id() + "/modificar")))
+                    .andExpect(content().string(not(containsString("id=\"repetir\""))))
+                    .andExpect(model().attribute("bloquesActuales", Set.of(LocalTime.of(10, 0), LocalTime.of(10, 30))))
+                    .andReturn();
+
+            var disponibilidad = (DisponibilidadResponse) resultado.getModelAndView().getModel().get("disponibilidad");
+            assertThat(disponibilidad.bloques()).allMatch(DisponibilidadResponse.Bloque::disponible);
+        }
+
+        @Test
+        void agendaConModificarAjenoDevuelve404() throws Exception {
+            ReservaResponse reserva = reservaDe(ANA, 10, 11);
+
+            mockMvc.perform(get(agendaModificando(reserva)).with(user("beto@mail.com")))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void agendaConModificarNoModificableRedirigeAMisReservasConError() throws Exception {
+            ReservaResponse semanal = deSerie();
+
+            mockMvc.perform(get(agendaModificando(semanal)).with(user(ANA)))
+                    .andExpect(redirectedUrl("/mis-reservas"))
+                    .andExpect(flash().attribute("error", "Las reservas semanales no se pueden modificar"));
+        }
+
+        @Test
+        void agendaAnonimaIgnoraModificar() throws Exception {
+            ReservaResponse reserva = reservaDe(ANA, 10, 11);
+
+            mockMvc.perform(get(agendaModificando(reserva)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(not(containsString("Estás modificando"))))
+                    .andExpect(content().string(not(containsString("modificar"))));
+        }
+
+        @Test
+        void catalogoEnModoModificarConservaElParametroEnLosEnlaces() throws Exception {
+            ReservaResponse reserva = reservaDe(ANA, 10, 11);
+
+            mockMvc.perform(get("/").param("modificar", reserva.id().toString()).with(user(ANA)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("Elige el nuevo espacio")))
+                    .andExpect(content().string(containsString(
+                            "/recursos/" + sala.getId() + "?fecha=" + dia + "&amp;modificar=" + reserva.id())))
+                    .andExpect(content().string(containsString("tipo=SALA_REUNIONES&amp;modificar=" + reserva.id())))
+                    .andExpect(model().attribute("urlPagina", containsString("modificar=" + reserva.id())));
+        }
+
+        @Test
+        void catalogoNormalNoLlevaElParametroModificar() throws Exception {
+            mockMvc.perform(get("/").with(user(ANA)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(not(containsString("modificar"))));
+        }
+
+        @Test
+        void postModificarExitoRedirigeAlMesNuevoConFlash() throws Exception {
+            ReservaResponse reserva = reservaDe(ANA, 10, 11);
+            LocalDate nuevoDia = dia.plusDays(35);
+
+            mockMvc.perform(formularioModificar(reserva.id(), nuevoDia, "15:00", "16:00"))
+                    .andExpect(redirectedUrl("/mis-reservas?mes=" + YearMonth.from(nuevoDia)))
+                    .andExpect(flash().attribute("reservaModificada", reserva.id()))
+                    .andExpect(flash().attribute("exito", containsString("Reserva modificada: Sala Andes")));
+
+            assertThat(reservaService.obtener(reserva.id(), ANA, false).fechaInicio())
+                    .isEqualTo(nuevoDia.atTime(15, 0));
+        }
+
+        @Test
+        void postModificarConflictoVuelveALaAgendaEnModoModificar() throws Exception {
+            ReservaResponse reserva = reservaDe(ANA, 10, 11);
+            reservaDe("beto@mail.com", 12, 13);
+
+            mockMvc.perform(formularioModificar(reserva.id(), dia, "12:00", "13:00"))
+                    .andExpect(redirectedUrl(agendaModificando(reserva)))
+                    .andExpect(flash().attribute("error", containsString("se solapa")));
+        }
+
+        @Test
+        void postModificarSinCsrfEsRechazado() throws Exception {
+            ReservaResponse reserva = reservaDe(ANA, 10, 11);
+
+            mockMvc.perform(post("/mis-reservas/{id}/modificar", reserva.id()).with(user(ANA))
+                            .param("recursoId", sala.getId().toString()))
+                    .andExpect(status().isForbidden());
         }
     }
 }
