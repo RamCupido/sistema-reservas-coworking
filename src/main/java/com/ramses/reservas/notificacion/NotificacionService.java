@@ -4,6 +4,7 @@ import com.ramses.reservas.common.exception.ReservaNoEncontradaException;
 import com.ramses.reservas.common.exception.SerieNoEncontradaException;
 import com.ramses.reservas.reserva.Reserva;
 import com.ramses.reservas.reserva.ReservaMapper;
+import com.ramses.reservas.reserva.ReservaModificadaEvent;
 import com.ramses.reservas.reserva.ReservaRepository;
 import com.ramses.reservas.reserva.SerieReserva;
 import com.ramses.reservas.reserva.SerieReservaRepository;
@@ -14,6 +15,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +53,7 @@ public class NotificacionService {
         CONFIRMACION("Reserva confirmada"),
         CANCELACION("Reserva cancelada"),
         RECORDATORIO("Recordatorio de tu reserva"),
+        MODIFICACION("Reserva modificada"),
         SERIE_CONFIRMACION("Reserva semanal confirmada"),
         SERIE_CANCELACION("Reserva semanal cancelada");
 
@@ -74,6 +77,15 @@ public class NotificacionService {
     @Transactional(readOnly = true)
     public void enviarRecordatorio(Long reservaId) {
         enviar(reservaId, TipoCorreo.RECORDATORIO, false);
+    }
+
+    /** Los datos nuevos se leen de la BD; los anteriores viajan en el evento (la fila ya no los tiene). */
+    @Transactional(readOnly = true)
+    public void enviarModificacion(ReservaModificadaEvent evento) {
+        enviar(evento.reservaId(), TipoCorreo.MODIFICACION, evento.porAdministrador(), Map.of(
+                "recursoAnterior", evento.recursoAnterior(),
+                "inicioAnterior", evento.inicioAnterior(),
+                "finAnterior", evento.finAnterior()));
     }
 
     @Transactional(readOnly = true)
@@ -115,6 +127,10 @@ public class NotificacionService {
     }
 
     private void enviar(Long reservaId, TipoCorreo tipo, boolean porAdministrador) {
+        enviar(reservaId, tipo, porAdministrador, Map.of());
+    }
+
+    private void enviar(Long reservaId, TipoCorreo tipo, boolean porAdministrador, Map<String, Object> extra) {
         ReservaResponse reserva = reservaRepository.findConDetalleById(reservaId)
                 .map(reservaMapper::toResponse)
                 .orElseThrow(() -> new ReservaNoEncontradaException(reservaId));
@@ -127,6 +143,7 @@ public class NotificacionService {
         contexto.setVariable("reserva", reserva);
         contexto.setVariable("porAdministrador", porAdministrador);
         contexto.setVariable("urlBase", properties.urlBase());
+        contexto.setVariables(extra);
         procesarYEnviar(destinatario, asunto, "email/reserva", contexto, tipo, "reserva " + reservaId);
     }
 

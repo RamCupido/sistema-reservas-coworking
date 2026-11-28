@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--/*
-  Correo de una reserva: confirmación, cancelación o recordatorio (variable "tipo").
+  Correo de una reserva: confirmación, modificación, cancelación o recordatorio (variable "tipo").
   Sin @{...}: fuera de una petición web no hay "contexto" para URLs relativas, por eso los
   enlaces se construyen con urlBase. Estilos en línea: Gmail/Outlook ignoran casi todo el CSS externo.
 */-->
@@ -32,6 +32,12 @@
                             <p th:case="'RECORDATORIO'" style="margin:0 0 20px;font-size:15px;line-height:1.5;">
                                 Te recordamos que tienes una reserva <strong>en menos de 24 horas</strong>:
                             </p>
+                            <p th:case="'MODIFICACION'" style="margin:0 0 20px;font-size:15px;line-height:1.5;">
+                                <th:block th:if="${porAdministrador}">La administración del coworking ha
+                                    <strong style="color:#0d6efd;">modificado</strong> tu reserva. Estos son los nuevos detalles:</th:block>
+                                <th:block th:unless="${porAdministrador}">Tu reserva ha sido
+                                    <strong style="color:#0d6efd;">modificada</strong>. Estos son los nuevos detalles:</th:block>
+                            </p>
                             <p th:case="'CANCELACION'" style="margin:0 0 20px;font-size:15px;line-height:1.5;">
                                 <th:block th:if="${porAdministrador}">La administración del coworking ha
                                     <strong style="color:#dc3545;">cancelado</strong> tu reserva. Disculpa las molestias.</th:block>
@@ -61,6 +67,12 @@
                                 <td style="padding:10px 14px;" th:text="'#' + ${reserva.id}">#12</td>
                             </tr>
                         </table>
+
+                        <p th:if="${tipo == 'MODIFICACION'}" style="margin:16px 0 0;font-size:13px;color:#6b7280;line-height:1.5;">
+                            Antes: <span th:text="${recursoAnterior}">Sala Andes</span>,
+                            <span th:text="${#temporals.format(inicioAnterior, 'EEEE d ''de'' MMMM')}">martes 17 de noviembre</span>,
+                            <span th:text="${#temporals.format(inicioAnterior, 'HH:mm')} + ' – ' + ${#temporals.format(finAnterior, 'HH:mm')}">10:00 – 11:00</span>
+                        </p>
 
                         <p style="margin:24px 0;" th:with="url=${urlBase + '/mis-reservas'}">
                             <a th:href="${url}" href="#"

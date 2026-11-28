@@ -17,6 +17,7 @@ import com.ramses.reservas.reserva.Reserva;
 import com.ramses.reservas.reserva.ReservaRepository;
 import com.ramses.reservas.reserva.ReservaService;
 import com.ramses.reservas.reserva.dto.CrearReservaRequest;
+import com.ramses.reservas.reserva.dto.ModificarReservaRequest;
 import com.ramses.reservas.reserva.dto.ReservaResponse;
 import com.ramses.reservas.usuario.Rol;
 import com.ramses.reservas.usuario.Usuario;
@@ -262,6 +263,64 @@ class NotificacionIntegrationTest {
             assertThat(recargar(enCurso).getEstado()).isEqualTo(EstadoReserva.CONFIRMADA);
             assertThat(recargar(futura).getEstado()).isEqualTo(EstadoReserva.CONFIRMADA);
             assertThat(recargar(canceladaPasada).getEstado()).isEqualTo(EstadoReserva.CANCELADA);
+        }
+    }
+
+    @Nested
+    class AlModificar {
+
+        private Recurso pacifico;
+
+        @BeforeEach
+        void otraSala() {
+            pacifico = recursoRepository.save(Recurso.builder().nombre("Sala Pacífico")
+                    .tipo(TipoRecurso.SALA_REUNIONES).capacidad(6).activo(true)
+                    .horaApertura(LocalTime.of(8, 0)).horaCierre(LocalTime.of(20, 0)).build());
+        }
+
+        private ModificarReservaRequest aPacifico(LocalTime inicio, LocalTime fin) {
+            return new ModificarReservaRequest(pacifico.getId(), dia.plusDays(1).atTime(inicio),
+                    dia.plusDays(1).atTime(fin));
+        }
+
+        @Test
+        void modificarEnviaCorreoConAntesYDespues() {
+            ReservaResponse reserva = reservar(NORA, LocalTime.of(10, 0), LocalTime.of(11, 0));
+            correo.esperarCorreosPara(NORA, 1);
+
+            reservaService.modificar(reserva.id(), aPacifico(LocalTime.of(15, 0), LocalTime.of(16, 30)), NORA, false);
+
+            MimeMessage mensaje = correo.esperarCorreosPara(NORA, 2).get(1);
+            assertThat(asunto(mensaje)).startsWith("Reserva modificada: Sala Pacífico");
+            assertThat(html(mensaje))
+                    .contains("modificada")
+                    .contains("15:00 – 16:30")
+                    .contains("Sala Andes")
+                    .contains("10:00 – 11:00")
+                    .doesNotContain("La administración del coworking ha");
+        }
+
+        @Test
+        void modificarPorAdminLoIndicaEnElCorreo() {
+            ReservaResponse reserva = reservar(NORA, LocalTime.of(10, 0), LocalTime.of(11, 0));
+            correo.esperarCorreosPara(NORA, 1);
+
+            reservaService.modificar(reserva.id(), aPacifico(LocalTime.of(15, 0), LocalTime.of(16, 0)),
+                    "admin@mail.com", true);
+
+            assertThat(html(correo.esperarCorreosPara(NORA, 2).get(1))).contains("La administración del coworking ha");
+        }
+
+        @Test
+        void modificarSinCambiosNoEnviaCorreo() {
+            ReservaResponse reserva = reservar(NORA, LocalTime.of(10, 0), LocalTime.of(11, 0));
+            correo.esperarCorreosPara(NORA, 1);
+
+            reservaService.modificar(reserva.id(), new ModificarReservaRequest(sala.getId(), dia.atTime(10, 0),
+                    dia.atTime(11, 0)), NORA, false);
+
+            correo.darMargenAlEnvioAsincrono();
+            assertThat(correo.enviadosA(NORA)).hasSize(1);
         }
     }
 }
